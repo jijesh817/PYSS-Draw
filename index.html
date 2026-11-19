@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>PYSS Bumper Draw</title>
+<meta name="theme-color" content="#1b2a5e">
+<meta name="description" content="PYSS New Year Membership Campaign Bumper Draw: tickets 1–100, who holds each one, and the prizes.">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="PYSS Draw">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&family=Noto+Sans+Malayalam:wght@500;700&display=swap">
+<style>
+/* Layout: one narrow column like the campaign poster — cream ground, navy ink, gold for what's sold */
+:root{
+ --bg:#fbf7ee;--card:#ffffff;--ink:#1b2a5e;--mut:#6b7190;--line:#ece4d2;
+ --gold:#c9a13b;--gold2:#e2bf5c;--golds:#fbf1d6;--free:#2f8a52;--frees:#e7f4ea;
+ --sans:"Manrope",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+ --ml:"Noto Sans Malayalam","Manrope",system-ui,sans-serif;
+}
+*{box-sizing:border-box}html{color-scheme:light}
+body{margin:0;font:15px/1.45 var(--sans);background:var(--bg);color:var(--ink);padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+.wrap{max-width:720px;margin:0 auto;padding-block:16px 56px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:flex;flex-direction:column;gap:14px}
+.hero{display:flex;gap:14px;align-items:center}
+.hero img{width:76px;height:auto;border-radius:16px;background:#fff;padding:6px;box-shadow:0 4px 14px rgba(27,42,94,.10);flex:none}
+.hero .t{min-width:0}
+.eyebrow{font-size:11px;letter-spacing:.22em;font-weight:700;color:var(--gold);text-transform:uppercase}
+h1{margin:2px 0 0;font-size:30px;line-height:1;font-weight:800;letter-spacing:-.01em}
+.ml{font-family:var(--ml);font-weight:700}
+.camp{font-size:15px;margin-top:6px}
+.pill{display:inline-block;background:linear-gradient(135deg,var(--gold),var(--gold2));color:#fff;border-radius:8px;padding:2px 10px;font-size:14px;margin-top:6px}
+.top{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
+.status{font-size:12px;color:var(--mut);flex:1;min-width:0}.status.warn{color:#a15c07}
+.ibtn{border:1px solid var(--line);background:#fff;color:var(--ink);border-radius:9px;padding:6px 12px;font:700 12px var(--sans);cursor:pointer;white-space:nowrap}
+.ibtn.solid{background:var(--ink);border-color:var(--ink);color:#fff}
+.ibtn:disabled{opacity:.6;cursor:default}
+.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.kpi{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:10px 12px;min-width:0}
+.kpi b{display:block;font-size:22px;font-weight:800;font-variant-numeric:tabular-nums;line-height:1.15}
+.kpi span{font-size:12px;color:var(--mut)}
+.kpi.sold b{color:var(--gold)}.kpi.free b{color:var(--free)}
+.bar{height:10px;border-radius:999px;background:#efe7d4;overflow:hidden;display:flex}
+.bar i{display:block;height:100%}.bar .p{background:linear-gradient(90deg,var(--gold),var(--gold2))}.bar .f{background:var(--free)}
+.barcap{font-size:12px;color:var(--mut);margin-top:4px}
+.sec{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px}
+.sec h2{margin:0 0 10px;font-size:16px;font-weight:800;display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.sec h2 small{font-size:12px;color:var(--mut);font-weight:600}
+.filters{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
+.chip{border:1px solid var(--line);background:#fff;color:var(--ink);border-radius:999px;padding:6px 12px;font:700 13px var(--sans);cursor:pointer}
+.chip.on{background:var(--ink);border-color:var(--ink);color:#fff}
+input[type=search]{width:100%;padding:10px 12px;border-radius:10px;border:1px solid var(--line);background:#fff;color:var(--ink);font:15px var(--sans);margin-bottom:10px}
+.grid{display:grid;grid-template-columns:repeat(10,1fr);gap:5px}
+.tk{aspect-ratio:1;max-width:100%;border-radius:8px;border:1px dashed #d8cdb3;background:#fffdf8;color:#a99c7c;font:700 13px var(--sans);font-variant-numeric:tabular-nums;cursor:pointer;padding:0;display:flex;align-items:center;justify-content:center}
+.tk.s{background:linear-gradient(135deg,var(--gold),var(--gold2));border:1px solid var(--gold);color:#fff}
+.tk.fr{background:var(--free);border:1px solid var(--free);color:#fff}
+.tk.dim{opacity:.18}
+.tk.sel{outline:3px solid var(--ink);outline-offset:1px}
+.legend{display:flex;gap:12px;flex-wrap:wrap;font-size:12px;color:var(--mut);margin-top:10px}
+.legend i{display:inline-block;width:12px;height:12px;border-radius:3px;vertical-align:-2px;margin-right:5px}
+.detail{margin-top:12px;border-radius:12px;padding:12px;background:var(--golds);border:1px solid #f0dfae}
+.detail.av{background:#fffdf8;border-color:var(--line)}.detail.fr{background:var(--frees);border-color:#bfe3c9}
+.detail .no{font-size:12px;color:var(--mut);font-weight:700;letter-spacing:.06em;text-transform:uppercase}
+.detail .nm{font-size:18px;font-weight:800;margin-top:2px}
+.detail .meta{font-size:13px;color:var(--mut);margin-top:2px}
+.list{display:flex;flex-direction:column}
+.li{display:grid;grid-template-columns:44px 1fr auto;gap:10px;align-items:center;padding:9px 0;border-top:1px solid var(--line);cursor:pointer}
+.li:first-child{border-top:0}
+.li .n{font-weight:800;font-variant-numeric:tabular-nums;text-align:center;border-radius:8px;padding:4px 0;background:var(--golds);color:#8a6a14}
+.li.fr .n{background:var(--frees);color:var(--free)}
+.li .w{min-width:0}.li .w b{display:block;font-weight:700;overflow-wrap:anywhere}.li .w span{font-size:12px;color:var(--mut)}
+.tag{font-size:11px;font-weight:800;border-radius:999px;padding:2px 8px;white-space:nowrap;background:var(--golds);color:#8a6a14}
+.tag.fr{background:var(--frees);color:var(--free)}
+.empty{font-size:13px;color:var(--mut);padding:8px 0}
+.prizes{display:flex;flex-direction:column;gap:8px}
+.pz{display:grid;grid-template-columns:36px 1fr auto;gap:10px;align-items:center;border:1px solid var(--line);border-radius:12px;padding:10px 12px}
+.medal{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800}
+.m1{background:radial-gradient(circle at 35% 30%,#f2d27a,#c9a13b)}.m2{background:radial-gradient(circle at 35% 30%,#c7cfe0,#8590ab)}.m3{background:radial-gradient(circle at 35% 30%,#e8b48c,#b9784b)}
+.pz .w b{display:block}.pz .w span{font-size:12px;color:var(--mut)}
+.pz .amt{font-size:20px;font-weight:800;font-variant-numeric:tabular-nums;text-align:right;line-height:1.1}.pz .amt small{display:block;font-size:11px;color:var(--mut);font-weight:600}
+.offer{border:1px solid #bfe3c9;background:var(--frees);border-radius:12px;padding:10px 12px;font-size:13px;color:#1f5e37}
+.offer b{color:var(--free)}
+.foot{text-align:center;font-size:13px;color:var(--mut)}
+.iosTip{font-size:12px;background:#fff;border:1px solid var(--line);border-radius:10px;padding:8px 10px}
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:#fff;padding:8px 14px;border-radius:999px;font-size:13px;opacity:0;transition:opacity .2s;pointer-events:none}
+.toast.on{opacity:1}
+button:focus-visible,input:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
+@media (max-width:520px){.kpis{grid-template-columns:repeat(2,1fr)}h1{font-size:26px}.grid{gap:4px}.tk{font-size:12px;border-radius:6px}}
+@media (prefers-reduced-motion:reduce){.toast{transition:none}}
+</style>
+</head>
+<body>
+<div class="wrap">
+ <header class="hero">
+  <img src="icons/logo.png" alt="PYSS logo" width="76" height="83">
+  <div class="t">
+   <div class="eyebrow">Pravasi Yadava Seva Samithi</div>
+   <h1>PYSS Bumper Draw</h1>
+   <div class="camp ml">പുതുവത്സര മെമ്പർഷിപ്പ് കാമ്പയിൻ</div>
+   <span class="pill ml">ബമ്പർ ഡ്രോ</span>
+  </div>
+ </header>
+
+ <div class="top"><div class="status" id="st">Loading tickets…</div><button class="ibtn" id="refresh">Refresh</button><button class="ibtn solid" id="install" hidden>Install app</button></div>
+ <div class="iosTip" id="iosTip" hidden>To install on iPhone: tap <b>Share</b>, then <b>Add to Home Screen</b>.</div>
+
+ <div class="kpis">
+  <div class="kpi sold"><b id="kSold">0</b><span>Tickets sold</span></div>
+  <div class="kpi"><b id="kLeft">100</b><span>Still available</span></div>
+  <div class="kpi"><b id="kAmt">₹0</b><span>Collected (₹500 each)</span></div>
+  <div class="kpi free"><b id="kFree">0</b><span>Free tickets</span></div>
+ </div>
+ <div><div class="bar"><i class="p" id="barP" style="width:0"></i><i class="f" id="barF" style="width:0"></i></div><div class="barcap" id="barCap"></div></div>
+
+ <section class="sec">
+  <h2>Tickets 1–100 <small>tap a ticket to see who holds it</small></h2>
+  <div class="filters" id="filters"><button class="chip on" data-f="all">All</button><button class="chip" data-f="sold">Sold</button><button class="chip" data-f="avail">Available</button><button class="chip" data-f="free">Free</button></div>
+  <input type="search" id="q" placeholder="Search ticket number, name, block or country…">
+  <div class="grid" id="grid"></div>
+  <div class="legend"><span><i style="background:linear-gradient(135deg,#c9a13b,#e2bf5c)"></i>Sold (₹500)</span><span><i style="background:#2f8a52"></i>Free (membership offer)</span><span><i style="background:#fffdf8;border:1px dashed #d8cdb3"></i>Available</span></div>
+  <div id="detail" hidden></div>
+ </section>
+
+ <section class="sec">
+  <h2>Ticket holders <small id="lcount"></small></h2>
+  <div class="list" id="list"></div>
+  <div style="display:flex;justify-content:flex-end;margin-top:10px"><button class="ibtn" id="copy">Share list</button></div>
+ </section>
+
+ <section class="sec">
+  <h2><span class="ml">സമ്മാനങ്ങൾ</span> <small>Total prize money ₹45,000</small></h2>
+  <div class="prizes">
+   <div class="pz"><div class="medal m1">1</div><div class="w"><b>First prize</b><span>1 winner</span></div><div class="amt">₹10,000</div></div>
+   <div class="pz"><div class="medal m2">2</div><div class="w"><b>Second prize</b><span>4 winners</span></div><div class="amt">₹5,000<small>each</small></div></div>
+   <div class="pz"><div class="medal m3">3</div><div class="w"><b>Third prize</b><span>5 winners</span></div><div class="amt">₹3,000<small>each</small></div></div>
+   <div class="offer"><b>Special offer:</b> one free ticket for members who pay 2 years' membership between 18 November and 31 December.</div>
+  </div>
+ </section>
+ <div class="foot ml">പുതുവത്സരത്തെ വരവേൽക്കാം… PYSS നോടൊപ്പം സമ്മാനങ്ങൾ നേടാം…</div>
+</div>
+<div class="toast" id="toast"></div>
+<script>
+// ---- Settings: the PYSS Google Sheet and its tabs (see README) ----
+const SHEET_ID='1aI3iV_viYfMjQY9MLlQ1r8LHHOdeM8Vksp_nr6bQG-k';
+const TICKETS_TAB='Tickets';
+const MEMBERS_TAB='Members'; // optional: S/N + Block override a member's block
+const TOTAL=100,PRICE=500;
+// -------------------------------------------------------------------
+const MEM={"1":["RAHUL K.S","VYTHIRI","Bahrain"],"2":["RAHUL T P","KNR","UAE"],"3":["SANGEETH MONDI KITTA","CVA","UAE"],"4":["Srubinraj mangali","CVA","Oman"],"5":["KRIPAL","KNR","Oman"],"6":["PREMJITH","KNR","UAE"],"7":["SREERAJ","CVA","UAE"],"8":["BAL ANOOP","CVA","UAE"],"9":["BIJU BALAN","TLY","Oman"],"10":["DILEEP THALLI","CVA","Qatar"],"11":["DIPIN KAPOOR","CVA","UAE"],"12":["Gopalakrishnan Manoj","VYTHIRI","Bahrain"],"13":["JITHIN MANTHAL","KNR","Qatar"],"14":["KOLLU SANTHOSH","CLT","UAE"],"15":["MANI PAMMAN","CVA","Bahrain"],"16":["MANOJ","KTBA","UAE"],"17":["Murali Manthal","CLT","UAE"],"18":["RAJANEESH","KTBA","UAE"],"19":["RAJESH WEST HILL","CLT","Saudi Arabia"],"20":["RAJESH KAPOOR","CLT","Saudi Arabia"],"21":["RAMAKRISHNAN P","KNR","Oman"],"22":["SARATH MANGALI","MNVDY","Bahrain"],"23":["SOORAJ GOVIND","KTBA","Saudi Arabia"],"24":["SURESH MANI","KTBA","Oman"],"25":["THIRU PATHI DINOOP","CVA","Saudi Arabia"],"26":["NIJIL","CVA","UAE"],"27":["MITHUN CHANDRAN","KTBA","Germany"],"28":["SRUJITH B","CVA","Bahrain"],"29":["AKSHAY THALLI","CVA","UAE"],"30":["SHARANJITH","KNR","Canada"],"31":["AMAL RAJ","KNR","Bahrain"],"32":["ASHWINRAJ","KNR","UAE"],"33":["SATHEESH","KTBA","Saudi Arabia"],"34":["DEEPAK MANOHARAN","CLT","UAE"],"35":["AJITH","KTBA","Oman"],"36":["AKSHAY POTHIKKA","KNR","UAE"],"37":["SANIL THALLI","CVA","UAE"],"38":["FIDAL CASTRO","CLT","UAE"],"39":["SOORAJ MURALI","CLT","UAE"],"40":["Anand Coonoor","COONOOR","UAE"],"41":["ANIL (PAINT)","KTBA","UAE"],"42":["ANILKUMAR CHAMI","TLY","Oman"],"43":["BIJURAJ T K","KNR","UAE"],"44":["Binoy Kollu","CVA","Kuwait"],"45":["DHEEKSHITH KAPOOR","CVA","UAE"],"46":["GIRISHAN CHAMI","MNVDY","Australia"],"47":["Krijith makkali krishnan","MNVDY","UAE"],"48":["MANTHAL SREENIVASAN","CLT","UAE"],"49":["MONISH MOHANAN","KNR","UAE"],"50":["Nigeesh Mondikitta","CVA","Qatar"],"51":["NIKETH","KNR","Canada"],"52":["PRABIN KRISHNA","KNR","Qatar"],"53":["PRASHOBH MANGANELLI","KNR","Kuwait"],"54":["PRASOBH MANIYAN","TLY","Saudi Arabia"],"55":["PRAVEEN POOSARI","CVA","Saudi Arabia"],"56":["RAHUL RAJ","KTBA","UAE"],"57":["RAJESH BAL","CLT","Saudi Arabia"],"58":["SANTHOSH THALLI","CLT","UAE"],"59":["SARATH RAMESHAN","KTBA","Saudi Arabia"],"60":["SHAJI . P","CLT","UAE"],"61":["SHIBU LAKSHMANAN","KNR","Oman"],"62":["SHYJU . G","TLY","Qatar"],"63":["SHYJU . P","CLT","Saudi Arabia"],"64":["SREEJITH MN","KNR","UAE"],"65":["SUJITH","KTBA","UAE"],"66":["SUNIL PAPPA","CVA","Saudi Arabia"],"67":["VINOD KUMAR","MNVDY","Kuwait"],"68":["VISHNU SURENDRAN","VYTHIRI","Kuwait"],"69":["YOGESH PANAMARATH","KNR","Kuwait"],"70":["SAJESH","KNR","Saudi Arabia"],"71":["SOORAJ SUNIL","CLT","Canada"],"72":["NIKHIL PV","MNVDY","UAE"],"73":["AKSHAY MK","CVA","Qatar"],"74":["JISHNU","KTBA","UAE"],"75":["JIJU MOHANAN GURUVAYOOR","CLT","Germany"],"76":["AKSHAY M N","KNR","Slovakia"],"77":["RIJIN DEV","KTBA","UAE"],"78":["SUKESH MANTHAL","KNR","Saudi Arabia"],"79":["AKHIL MAGAALI SELVARAJ","MNVDY","UAE"],"80":["AKHIL RAJAN","KTBA","UAE"],"81":["ANIL KUMAR (Ananda)","MADIKERI","Kuwait"],"82":["ASHOK THALAKONDAN","CVA","UAE"],"83":["BALU P","KTBA","Kuwait"],"84":["BIPIN KRISHNA","KNR","UAE"],"85":["GANESH BAL","KTBA","Qatar"],"86":["GOUTHAM","CLT","Oman"],"87":["JIJESH BALAN","KTBA","UAE"],"88":["MANEESH BALAN","TLY","UAE"],"89":["Mithin Manthal","KNR","Oman"],"90":["MITHUN RAJ","MNVDY","Seaman (at sea)"],"91":["NIDESH","CLT","UAE"],"92":["PATHI DEEPESH","KNR","UAE"],"93":["Ramakrishnan","COONOOR","USA"],"94":["PRADEESH ( KAAKU )","KNR","Canada"],"95":["PRASOON MN","KNR","UAE"],"96":["RAHUL BRIKAL","KNR","UAE"],"97":["Rahul Narayanan","MNVDY","Kuwait"],"98":["RAJESH M K","MNVDY","UAE"],"99":["RAMESH C R","MNVDY","Kuwait"],"100":["Ramesh Palakkad","PKD","UAE"],"101":["SANOJ MONDIKITTA","CVA","UAE"],"102":["SHAMMYDAS THALLI","CVA","UAE"],"103":["UMESH MANTHAL","KNR","Qatar"],"104":["RAJESH KUMAR VENGAI","KNR","Kuwait"],"105":["RAJANEESH THALLI","CVA","Germany"],"106":["RAHUL S/O BABU","CVA","Saudi Arabia"],"107":["YADHU Krishnan","CLT","Qatar"],"108":["MADHU","CVA","Qatar"],"109":["RAJESH BRIKKAL","KNR","UAE"]};
+const MON=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const p2=n=>String(n).padStart(2,'0');
+const fd=s=>{const m=/^(\d{4})-(\d{2})-(\d{2})$/.exec(s||'');return m?`${+m[3]} ${MON[+m[2]-1]} ${m[1]}`:(s||'')};
+const inr=n=>'₹'+n.toLocaleString('en-IN');
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function ls(k,v){try{if(v===undefined)return localStorage.getItem(k);localStorage.setItem(k,v)}catch(e){return null}}
+let T={};          // ticket no -> {name, block, country, free, date, sn}
+let filter='all',sel=null;
+
+// ---- Sheet reading ----
+function gviz(text){const s=text.indexOf('{'),e=text.lastIndexOf('}');if(s<0||e<0)throw new Error('format');const j=JSON.parse(text.slice(s,e+1));if(j.status==='error')throw new Error('sheet');return j}
+async function fetchTab(tab){const r=await fetch(`https://docs.google.com/spreadsheets/d/${encodeURIComponent(SHEET_ID)}/gviz/tq?tqx=out:json&headers=1&sheet=${encodeURIComponent(tab)}&_=${Date.now()}`,{cache:'no-store'});if(!r.ok)throw new Error('http');return r.text()}
+const norm=s=>(s||'').toLowerCase().replace(/[^a-z]/g,'');
+function cols(j){return j.table.cols.map(c=>norm(c.label))}
+function cNum(c){if(!c||c.v==null)return NaN;return typeof c.v==='number'?c.v:parseFloat(String(c.v).replace(/[^0-9.\-]/g,''))}
+function cText(c){return c&&c.v!=null?String(c.f!=null&&typeof c.v!=='string'?c.f:c.v).trim():''}
+function cDate(c){if(!c||c.v==null)return '';const v=c.v;if(typeof v==='string'){let m=/^Date\((\d+),(\d+),(\d+)/.exec(v);if(m)return m[1]+'-'+p2(+m[2]+1)+'-'+p2(+m[3]);
+ m=/^(\d{4})-(\d{1,2})-(\d{1,2})/.exec(v);if(m)return m[1]+'-'+p2(+m[2])+'-'+p2(+m[3]);
+ m=/^(\d{1,2})[\/.\-](\d{1,2})[\/.\-](\d{4})$/.exec(v.trim());if(m)return m[3]+'-'+p2(+m[2])+'-'+p2(+m[1]);return v.trim()}return c.f||String(v)}
+function find(cs,names){return cs.findIndex(c=>c&&names.includes(c))}
+function parseMembers(text){const j=gviz(text),cs=cols(j),iS=find(cs,['sn','sno','serial','serialno']),iB=find(cs,['block']);if(iS<0||iB<0)return {};
+ const B={};j.table.rows.forEach(r=>{const c=r.c||[],sn=Math.round(cNum(c[iS])),b=cText(c[iB]);if(MEM[sn]&&b)B[sn]=b.slice(0,40)});return B}
+function parseTickets(text,B){const j=gviz(text),cs=cols(j);
+ const iT=find(cs,['ticketno','ticket','ticketnumber','no','tno']),iS=find(cs,['sn','sno','serial','serialno','membersn']),iN=find(cs,['name','buyer','buyername','holder']),
+  iB=find(cs,['block']),iC=find(cs,['country']),iY=find(cs,['type','freepaid','paidfree','free','payment']),iD=find(cs,['date','saledate','datesold','solddate']);
+ if(iT<0)throw new Error('columns');
+ const out={},bad=[],dup=[];
+ j.table.rows.forEach((r,n)=>{const c=r.c||[],no=Math.round(cNum(c[iT]));const row=n+2;
+  const sn=iS>=0?Math.round(cNum(c[iS])):NaN,m=MEM[sn];
+  const name=(iN>=0&&cText(c[iN]))||(m?m[0]:'');
+  if(isNaN(no)&&!name)return;                       // blank row
+  if(!(no>=1&&no<=TOTAL)||!name){bad.push(row);return}
+  if(out[no]){dup.push(no);return}
+  out[no]={no,name:name.slice(0,60),sn:m?sn:null,
+   block:((iB>=0&&cText(c[iB]))||(m?(B[sn]||m[1]):'')).slice(0,40),
+   country:((iC>=0&&cText(c[iC]))||(m?m[2]:'')).slice(0,40),
+   free:iY>=0&&/free|comp|സൗജന്യ/i.test(cText(c[iY])),date:iD>=0?cDate(c[iD]):''}});
+ return {out,bad,dup}}
+
+// ---- Render ----
+function stats(){const v=Object.values(T),sold=v.length,free=v.filter(t=>t.free).length;return {sold,free,paid:sold-free}}
+function matches(t,no){const q=document.getElementById('q').value.trim().toLowerCase();
+ if(filter==='sold'&&!t)return false;if(filter==='avail'&&t)return false;if(filter==='free'&&!(t&&t.free))return false;
+ if(!q)return true;if(String(no)===q)return true;return !!t&&(t.name+' '+t.block+' '+t.country).toLowerCase().includes(q)}
+function render(){const {sold,free,paid}=stats();
+ document.getElementById('kSold').textContent=sold;document.getElementById('kLeft').textContent=TOTAL-sold;
+ document.getElementById('kAmt').textContent=inr(paid*PRICE);document.getElementById('kFree').textContent=free;
+ document.getElementById('barP').style.width=(paid/TOTAL*100)+'%';document.getElementById('barF').style.width=(free/TOTAL*100)+'%';
+ document.getElementById('barCap').textContent=`${sold} of ${TOTAL} tickets taken · ${paid} paid, ${free} free`;
+ let g='';for(let no=1;no<=TOTAL;no++){const t=T[no];g+=`<button class="tk ${t?(t.free?'fr':'s'):''} ${matches(t,no)?'':'dim'} ${sel===no?'sel':''}" data-no="${no}" aria-label="Ticket ${no}${t?', '+esc(t.name):', available'}">${no}</button>`}
+ document.getElementById('grid').innerHTML=g;
+ const L=Object.values(T).sort((a,b)=>a.no-b.no).filter(t=>matches(t,t.no));
+ document.getElementById('lcount').textContent=L.length+(L.length===1?' ticket':' tickets');
+ document.getElementById('list').innerHTML=filter==='avail'?'<div class="empty">Available tickets are shown in the grid above.</div>':L.length?L.map(t=>`<div class="li ${t.free?'fr':''}" data-no="${t.no}"><div class="n">${t.no}</div><div class="w"><b>${esc(t.name)}</b><span>${esc([t.block,t.country].filter(Boolean).join(' · '))}${t.date?(t.block||t.country?' · ':'')+esc(fd(t.date)):''}</span></div><span class="tag ${t.free?'fr':''}">${t.free?'Free':'₹500'}</span></div>`).join(''):'<div class="empty">No tickets sold yet.</div>';
+ const d=document.getElementById('detail');
+ if(sel){const t=T[sel];d.hidden=false;d.className='detail '+(t?(t.free?'fr':''):'av');
+  d.innerHTML=t?`<div class="no">Ticket ${sel} · ${t.free?'Free (membership offer)':'Paid ₹500'}</div><div class="nm">${esc(t.name)}</div><div class="meta">${esc([t.block&&'Block '+t.block,t.country].filter(Boolean).join(' · '))}${t.date?'<br>Sold '+esc(fd(t.date)):''}</div>`
+   :`<div class="no">Ticket ${sel}</div><div class="nm">Available</div><div class="meta">This ticket hasn't been sold yet.</div>`}else d.hidden=true}
+document.getElementById('grid').addEventListener('click',e=>{const b=e.target.closest('.tk');if(!b)return;const no=+b.dataset.no;sel=sel===no?null:no;render()});
+document.getElementById('list').addEventListener('click',e=>{const r=e.target.closest('.li');if(!r)return;sel=+r.dataset.no;render();document.getElementById('grid').scrollIntoView({behavior:'smooth',block:'center'})});
+document.getElementById('filters').addEventListener('click',e=>{const c=e.target.closest('.chip');if(!c)return;filter=c.dataset.f;document.querySelectorAll('.chip').forEach(x=>x.classList.toggle('on',x===c));render()});
+document.getElementById('q').oninput=render;
+document.getElementById('copy').onclick=()=>{const L=Object.values(T).sort((a,b)=>a.no-b.no);const {sold,free,paid}=stats();
+ const txt=`PYSS Bumper Draw – ticket holders\n`+(L.length?L.map(t=>`${t.no}. ${t.name}${t.block?' ('+t.block+')':''}${t.free?' – Free':''}`).join('\n'):'No tickets sold yet.')+`\n\nSold ${sold}/${TOTAL} (${paid} paid, ${free} free) · ${TOTAL-sold} available`;
+ if(navigator.share&&/Android|iPhone|iPad/i.test(navigator.userAgent)){navigator.share({text:txt}).catch(()=>{});return}
+ (navigator.clipboard?navigator.clipboard.writeText(txt):Promise.reject()).then(()=>toast('Copied – paste into WhatsApp')).catch(()=>toast('Copy not allowed here'))};
+function toast(t){const el=document.getElementById('toast');el.textContent=t;el.classList.add('on');setTimeout(()=>el.classList.remove('on'),1800)}
+function status(t,warn){const s=document.getElementById('st');s.textContent=t;s.classList.toggle('warn',!!warn)}
+function ago(ts){const m=Math.round((Date.now()-ts)/60000);return m<1?'just now':m<60?m+' min ago':m<1440?Math.round(m/60)+' h ago':new Date(ts).toLocaleDateString('en-GB',{day:'numeric',month:'short'})}
+function cached(){try{return JSON.parse(ls('pyssDraw')||'null')}catch(e){return null}}
+
+let loading=false;
+async function load(){
+ if(!SHEET_ID||SHEET_ID.startsWith('__')){status('Ticket sheet not connected yet.',true);return}
+ if(loading)return;loading=true;const btn=document.getElementById('refresh');btn.disabled=true;
+ try{const [tt,mt]=await Promise.all([fetchTab(TICKETS_TAB),fetchTab(MEMBERS_TAB).catch(()=>null)]);
+  let B={};try{B=mt?parseMembers(mt):{}}catch(e){}
+  const {out,bad,dup}=parseTickets(tt,B);T=out;const ts=Date.now();ls('pyssDraw',JSON.stringify({T,ts}));render();
+  const w=[];if(bad.length)w.push(`check sheet row${bad.length>1?'s':''} ${bad.slice(0,5).join(', ')}${bad.length>5?'…':''} (ticket number or name missing)`);
+  if(dup.length)w.push(`ticket${dup.length>1?'s':''} ${[...new Set(dup)].join(', ')} entered twice (first row used)`);
+  status('Updated '+ago(ts)+(w.length?' · '+w.join(' · '):''),w.length>0)}
+ catch(e){const c=cached();
+  if(c){T=c.T;render();status((navigator.onLine===false?'Offline':'Could not reach the ticket sheet')+' · showing tickets from '+ago(c.ts),true)}
+  else status(e.message==='columns'?'Add a tab named Tickets with a "Ticket No" column to the sheet.':'Could not load tickets from the sheet. Check that the Tickets tab exists and the sheet is shared.',true)}
+ finally{loading=false;btn.disabled=false}}
+document.getElementById('refresh').onclick=load;
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')load()});
+
+// ---- Install ----
+let deferred=null;const ib=document.getElementById('install');
+window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferred=e;ib.hidden=false});
+ib.onclick=async()=>{if(!deferred)return;deferred.prompt();await deferred.userChoice.catch(()=>{});deferred=null;ib.hidden=true};
+window.addEventListener('appinstalled',()=>{ib.hidden=true;toast('Installed')});
+if(/iPhone|iPad|iPod/i.test(navigator.userAgent)&&!(window.matchMedia('(display-mode: standalone)').matches||navigator.standalone))document.getElementById('iosTip').hidden=false;
+if('serviceWorker' in navigator&&location.protocol==='https:')navigator.serviceWorker.register('sw.js').catch(()=>{});
+
+(()=>{const c=cached();if(c&&c.T)T=c.T})();
+render();load();
+</script>
+</body>
+</html>
