@@ -58,3 +58,4 @@ the app link can read it.
 - `index.html` – the app (includes the member list used to look up S/N)
 - `manifest.webmanifest`, `sw.js`, `icons/` – installable app and offline use
 - `sheet-template/Tickets.csv` – headings for the Tickets tab
+- `apps-script/Code.gs` – the sheet script that saves sales made in the app
