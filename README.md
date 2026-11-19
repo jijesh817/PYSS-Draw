@@ -47,6 +47,37 @@ named in the status line so they can be fixed.
 Phone numbers or other private details should not go in this tab: anyone with
 the app link can read it.
 
+## Selling tickets from the app (treasurer)
+
+The app can add a sale to the Tickets tab itself, protected by a PIN. The PIN
+is checked by a small script that lives inside the Google Sheet, so it never
+appears in the app's code. Set it up once, on a computer:
+
+1. Open the PYSS Google Sheet → **Extensions → Apps Script**.
+2. Delete what's in the editor, paste the whole of `apps-script/Code.gs`,
+   and click **Save**.
+3. Click **Project Settings** (gear on the left) → **Script Properties** →
+   **Add script property**. Property `PIN`, value: a number only the
+   treasurer knows. **Save script properties**.
+4. Click **Deploy → New deployment**, choose the type **Web app** (gear next
+   to "Select type"). Set **Execute as: Me** and **Who has access: Anyone**,
+   then **Deploy**. Google asks you to authorise: choose your account, then
+   **Advanced → Go to … (unsafe) → Allow** (it's your own script).
+5. Copy the **Web app URL** (it ends in `/exec`) and paste it into
+   `APPS_SCRIPT_URL` in `index.html`.
+
+Using it: tap **Sell a ticket** (or tap an available ticket, then **Sell
+ticket N**). Enter the PIN the first time, pick the member from the list (or
+type any name for a guest), choose **Paid ₹500** or **Free (offer)**, and
+**Save sale**. The phone remembers the PIN; **Forget PIN** removes it. A sold
+ticket can be undone with **Cancel this sale**. The script refuses a ticket
+that is already sold, and locks out PIN guessing after 10 wrong tries in 10
+minutes.
+
+To change the PIN, edit the `PIN` script property. If you change Code.gs
+later, use **Deploy → Manage deployments → Edit → Version: New version** so
+the URL stays the same.
+
 ## Installing on a phone
 
 - **Android (Chrome):** tap **Install app** on the page, or **⋮ → Install
@@ -58,3 +89,4 @@ the app link can read it.
 - `index.html` – the app (includes the member list used to look up S/N)
 - `manifest.webmanifest`, `sw.js`, `icons/` – installable app and offline use
 - `sheet-template/Tickets.csv` – headings for the Tickets tab
+- `apps-script/Code.gs` – the sheet script that saves sales made in the app

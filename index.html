@@ -21,7 +21,7 @@
  --sans:"Manrope",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
  --ml:"Noto Sans Malayalam","Manrope",system-ui,sans-serif;
 }
-*{box-sizing:border-box}html{color-scheme:light}
+*{box-sizing:border-box}html{color-scheme:light}[hidden]{display:none!important}
 body{margin:0;font:15px/1.45 var(--sans);background:var(--bg);color:var(--ink);padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
 .wrap{max-width:720px;margin:0 auto;padding-block:16px 56px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:flex;flex-direction:column;gap:14px}
 .hero{display:flex;gap:14px;align-items:center}
@@ -84,6 +84,22 @@ input[type=search]{width:100%;padding:10px 12px;border-radius:10px;border:1px so
 .offer b{color:var(--free)}
 .foot{text-align:center;font-size:13px;color:var(--mut)}
 .iosTip{font-size:12px;background:#fff;border:1px solid var(--line);border-radius:10px;padding:8px 10px}
+.sale{margin-top:12px;border:1px solid var(--line);border-radius:12px;padding:12px;background:#fff;display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.sale h3{grid-column:1/-1;margin:0;font-size:15px;font-weight:800;display:flex;justify-content:space-between;gap:8px;align-items:baseline}
+.sale h3 button{border:0;background:none;color:var(--mut);font:600 12px var(--sans);cursor:pointer;padding:0}
+.sale label{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--mut);font-weight:600;min-width:0}
+.sale input{font:15px var(--sans);padding:9px 10px;border:1px solid var(--line);border-radius:9px;color:var(--ink);background:#fff;width:100%;min-width:0}
+.sale .full{grid-column:1/-1}
+.seg{display:flex;border:1px solid var(--line);border-radius:9px;overflow:hidden}
+.seg button{flex:1;border:0;background:#fff;color:var(--ink);font:700 14px var(--sans);padding:9px 6px;cursor:pointer}
+.seg button.on{background:var(--ink);color:#fff}.seg button.on.free{background:var(--free)}
+.sale .hint{grid-column:1/-1;font-size:12px;color:var(--mut)}
+.sale .err{grid-column:1/-1;font-size:13px;color:#b42318;font-weight:600}
+.sale .bts{grid-column:1/-1;display:flex;gap:8px;justify-content:flex-end}
+.go{border:0;background:linear-gradient(135deg,var(--gold),var(--gold2));color:#fff;border-radius:9px;padding:10px 18px;font:800 14px var(--sans);cursor:pointer}
+.go:disabled{opacity:.6;cursor:default}
+.dact{margin-top:10px;display:flex;gap:8px;flex-wrap:wrap}
+.dact .danger{border-color:#f3c3bd;color:#b42318}
 .toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:#fff;padding:8px 14px;border-radius:999px;font-size:13px;opacity:0;transition:opacity .2s;pointer-events:none}
 .toast.on{opacity:1}
 button:focus-visible,input:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
@@ -103,7 +119,7 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--ink);outline-of
   </div>
  </header>
 
- <div class="top"><div class="status" id="st">Loading tickets…</div><button class="ibtn" id="refresh">Refresh</button><button class="ibtn solid" id="install" hidden>Install app</button></div>
+ <div class="top"><div class="status" id="st">Loading tickets…</div><button class="ibtn" id="refresh">Refresh</button><button class="ibtn" id="sellBtn" hidden>Sell a ticket</button><button class="ibtn solid" id="install" hidden>Install app</button></div>
  <div class="iosTip" id="iosTip" hidden>To install on iPhone: tap <b>Share</b>, then <b>Add to Home Screen</b>.</div>
 
  <div class="kpis">
@@ -121,6 +137,8 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--ink);outline-of
   <div class="grid" id="grid"></div>
   <div class="legend"><span><i style="background:linear-gradient(135deg,#c9a13b,#e2bf5c)"></i>Sold (₹500)</span><span><i style="background:#2f8a52"></i>Free (membership offer)</span><span><i style="background:#fffdf8;border:1px dashed #d8cdb3"></i>Available</span></div>
   <div id="detail" hidden></div>
+  <form class="sale" id="sale" hidden autocomplete="off"></form>
+  <datalist id="memList"></datalist>
  </section>
 
  <section class="sec">
@@ -147,6 +165,8 @@ const SHEET_ID='1aI3iV_viYfMjQY9MLlQ1r8LHHOdeM8Vksp_nr6bQG-k';
 const TICKETS_TAB='Tickets';
 const MEMBERS_TAB='Members'; // optional: S/N + Block override a member's block
 const TOTAL=100,PRICE=500;
+// Web app URL of the sheet's Apps Script (apps-script/Code.gs). Empty = selling from the app is off.
+const APPS_SCRIPT_URL='__APPS_SCRIPT_URL__';
 // -------------------------------------------------------------------
 const MEM={"1":["RAHUL K.S","VYTHIRI","Bahrain"],"2":["RAHUL T P","KNR","UAE"],"3":["SANGEETH MONDI KITTA","CVA","UAE"],"4":["Srubinraj mangali","CVA","Oman"],"5":["KRIPAL","KNR","Oman"],"6":["PREMJITH","KNR","UAE"],"7":["SREERAJ","CVA","UAE"],"8":["BAL ANOOP","CVA","UAE"],"9":["BIJU BALAN","TLY","Oman"],"10":["DILEEP THALLI","CVA","Qatar"],"11":["DIPIN KAPOOR","CVA","UAE"],"12":["Gopalakrishnan Manoj","VYTHIRI","Bahrain"],"13":["JITHIN MANTHAL","KNR","Qatar"],"14":["KOLLU SANTHOSH","CLT","UAE"],"15":["MANI PAMMAN","CVA","Bahrain"],"16":["MANOJ","KTBA","UAE"],"17":["Murali Manthal","CLT","UAE"],"18":["RAJANEESH","KTBA","UAE"],"19":["RAJESH WEST HILL","CLT","Saudi Arabia"],"20":["RAJESH KAPOOR","CLT","Saudi Arabia"],"21":["RAMAKRISHNAN P","KNR","Oman"],"22":["SARATH MANGALI","MNVDY","Bahrain"],"23":["SOORAJ GOVIND","KTBA","Saudi Arabia"],"24":["SURESH MANI","KTBA","Oman"],"25":["THIRU PATHI DINOOP","CVA","Saudi Arabia"],"26":["NIJIL","CVA","UAE"],"27":["MITHUN CHANDRAN","KTBA","Germany"],"28":["SRUJITH B","CVA","Bahrain"],"29":["AKSHAY THALLI","CVA","UAE"],"30":["SHARANJITH","KNR","Canada"],"31":["AMAL RAJ","KNR","Bahrain"],"32":["ASHWINRAJ","KNR","UAE"],"33":["SATHEESH","KTBA","Saudi Arabia"],"34":["DEEPAK MANOHARAN","CLT","UAE"],"35":["AJITH","KTBA","Oman"],"36":["AKSHAY POTHIKKA","KNR","UAE"],"37":["SANIL THALLI","CVA","UAE"],"38":["FIDAL CASTRO","CLT","UAE"],"39":["SOORAJ MURALI","CLT","UAE"],"40":["Anand Coonoor","COONOOR","UAE"],"41":["ANIL (PAINT)","KTBA","UAE"],"42":["ANILKUMAR CHAMI","TLY","Oman"],"43":["BIJURAJ T K","KNR","UAE"],"44":["Binoy Kollu","CVA","Kuwait"],"45":["DHEEKSHITH KAPOOR","CVA","UAE"],"46":["GIRISHAN CHAMI","MNVDY","Australia"],"47":["Krijith makkali krishnan","MNVDY","UAE"],"48":["MANTHAL SREENIVASAN","CLT","UAE"],"49":["MONISH MOHANAN","KNR","UAE"],"50":["Nigeesh Mondikitta","CVA","Qatar"],"51":["NIKETH","KNR","Canada"],"52":["PRABIN KRISHNA","KNR","Qatar"],"53":["PRASHOBH MANGANELLI","KNR","Kuwait"],"54":["PRASOBH MANIYAN","TLY","Saudi Arabia"],"55":["PRAVEEN POOSARI","CVA","Saudi Arabia"],"56":["RAHUL RAJ","KTBA","UAE"],"57":["RAJESH BAL","CLT","Saudi Arabia"],"58":["SANTHOSH THALLI","CLT","UAE"],"59":["SARATH RAMESHAN","KTBA","Saudi Arabia"],"60":["SHAJI . P","CLT","UAE"],"61":["SHIBU LAKSHMANAN","KNR","Oman"],"62":["SHYJU . G","TLY","Qatar"],"63":["SHYJU . P","CLT","Saudi Arabia"],"64":["SREEJITH MN","KNR","UAE"],"65":["SUJITH","KTBA","UAE"],"66":["SUNIL PAPPA","CVA","Saudi Arabia"],"67":["VINOD KUMAR","MNVDY","Kuwait"],"68":["VISHNU SURENDRAN","VYTHIRI","Kuwait"],"69":["YOGESH PANAMARATH","KNR","Kuwait"],"70":["SAJESH","KNR","Saudi Arabia"],"71":["SOORAJ SUNIL","CLT","Canada"],"72":["NIKHIL PV","MNVDY","UAE"],"73":["AKSHAY MK","CVA","Qatar"],"74":["JISHNU","KTBA","UAE"],"75":["JIJU MOHANAN GURUVAYOOR","CLT","Germany"],"76":["AKSHAY M N","KNR","Slovakia"],"77":["RIJIN DEV","KTBA","UAE"],"78":["SUKESH MANTHAL","KNR","Saudi Arabia"],"79":["AKHIL MAGAALI SELVARAJ","MNVDY","UAE"],"80":["AKHIL RAJAN","KTBA","UAE"],"81":["ANIL KUMAR (Ananda)","MADIKERI","Kuwait"],"82":["ASHOK THALAKONDAN","CVA","UAE"],"83":["BALU P","KTBA","Kuwait"],"84":["BIPIN KRISHNA","KNR","UAE"],"85":["GANESH BAL","KTBA","Qatar"],"86":["GOUTHAM","CLT","Oman"],"87":["JIJESH BALAN","KTBA","UAE"],"88":["MANEESH BALAN","TLY","UAE"],"89":["Mithin Manthal","KNR","Oman"],"90":["MITHUN RAJ","MNVDY","Seaman (at sea)"],"91":["NIDESH","CLT","UAE"],"92":["PATHI DEEPESH","KNR","UAE"],"93":["Ramakrishnan","COONOOR","USA"],"94":["PRADEESH ( KAAKU )","KNR","Canada"],"95":["PRASOON MN","KNR","UAE"],"96":["RAHUL BRIKAL","KNR","UAE"],"97":["Rahul Narayanan","MNVDY","Kuwait"],"98":["RAJESH M K","MNVDY","UAE"],"99":["RAMESH C R","MNVDY","Kuwait"],"100":["Ramesh Palakkad","PKD","UAE"],"101":["SANOJ MONDIKITTA","CVA","UAE"],"102":["SHAMMYDAS THALLI","CVA","UAE"],"103":["UMESH MANTHAL","KNR","Qatar"],"104":["RAJESH KUMAR VENGAI","KNR","Kuwait"],"105":["RAJANEESH THALLI","CVA","Germany"],"106":["RAHUL S/O BABU","CVA","Saudi Arabia"],"107":["YADHU Krishnan","CLT","Qatar"],"108":["MADHU","CVA","Qatar"],"109":["RAJESH BRIKKAL","KNR","UAE"]};
 const MON=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
@@ -206,7 +226,10 @@ function render(){const {sold,free,paid}=stats();
  const d=document.getElementById('detail');
  if(sel){const t=T[sel];d.hidden=false;d.className='detail '+(t?(t.free?'fr':''):'av');
   d.innerHTML=t?`<div class="no">Ticket ${sel} · ${t.free?'Free (membership offer)':'Paid ₹500'}</div><div class="nm">${esc(t.name)}</div><div class="meta">${esc([t.block&&'Block '+t.block,t.country].filter(Boolean).join(' · '))}${t.date?'<br>Sold '+esc(fd(t.date)):''}</div>`
-   :`<div class="no">Ticket ${sel}</div><div class="nm">Available</div><div class="meta">This ticket hasn't been sold yet.</div>`}else d.hidden=true}
+   :`<div class="no">Ticket ${sel}</div><div class="nm">Available</div><div class="meta">This ticket hasn't been sold yet.</div>`;
+  if(canSell()){const a=document.createElement('div');a.className='dact';
+   a.innerHTML=t?(cancelAsk===sel?`<button class="ibtn danger" data-cancel="${sel}">Yes, cancel ticket ${sel}</button><button class="ibtn" data-cancelno>Keep it</button>`:`<button class="ibtn danger" data-askcancel="${sel}">Cancel this sale</button>`):`<button class="ibtn solid" data-sell="${sel}">Sell ticket ${sel}</button>`;
+   d.appendChild(a)}}else d.hidden=true}
 document.getElementById('grid').addEventListener('click',e=>{const b=e.target.closest('.tk');if(!b)return;const no=+b.dataset.no;sel=sel===no?null:no;render()});
 document.getElementById('list').addEventListener('click',e=>{const r=e.target.closest('.li');if(!r)return;sel=+r.dataset.no;render();document.getElementById('grid').scrollIntoView({behavior:'smooth',block:'center'})});
 document.getElementById('filters').addEventListener('click',e=>{const c=e.target.closest('.chip');if(!c)return;filter=c.dataset.f;document.querySelectorAll('.chip').forEach(x=>x.classList.toggle('on',x===c));render()});
@@ -244,6 +267,64 @@ ib.onclick=async()=>{if(!deferred)return;deferred.prompt();await deferred.userCh
 window.addEventListener('appinstalled',()=>{ib.hidden=true;toast('Installed')});
 if(/iPhone|iPad|iPod/i.test(navigator.userAgent)&&!(window.matchMedia('(display-mode: standalone)').matches||navigator.standalone))document.getElementById('iosTip').hidden=false;
 if('serviceWorker' in navigator&&location.protocol==='https:')navigator.serviceWorker.register('sw.js').catch(()=>{});
+
+// ---- Selling tickets (treasurer only, PIN checked by the sheet's Apps Script) ----
+const sellOn=APPS_SCRIPT_URL&&!APPS_SCRIPT_URL.startsWith('__');
+let PIN=ls('pyssDrawPin')||'',sale=null,cancelAsk=null;
+function canSell(){return sellOn&&!!PIN}
+document.getElementById('memList').innerHTML=Object.entries(MEM).sort((a,b)=>a[1][0].localeCompare(b[1][0])).map(([sn,m])=>`<option value="${esc(m[0])} · S/N ${sn}">${esc(m[1])} · ${esc(m[2])}</option>`).join('');
+const sellBtn=document.getElementById('sellBtn');sellBtn.hidden=!sellOn;
+sellBtn.onclick=()=>openSale(sel&&!T[sel]?sel:null);
+function firstFree(){for(let n=1;n<=TOTAL;n++)if(!T[n])return n;return ''}
+function openSale(no){sale={no:no||firstFree(),buyer:'',block:'',country:'',type:'Paid',date:today(),err:'',busy:false};drawSale();
+ const f=document.getElementById('sale');f.scrollIntoView({behavior:'smooth',block:'center'});const i=f.querySelector(PIN?'#sBuyer':'#sPin');i&&i.focus()}
+function today(){const d=new Date();return d.getFullYear()+'-'+p2(d.getMonth()+1)+'-'+p2(d.getDate())}
+function buyerSn(v){const m=/S\/N (\d+)\s*$/.exec(v||'');return m&&MEM[m[1]]?+m[1]:null}
+function drawSale(){const f=document.getElementById('sale');if(!sale){f.hidden=true;f.innerHTML='';return}
+ const sn=buyerSn(sale.buyer);f.hidden=false;
+ f.innerHTML=`<h3>Sell a ticket <button type="button" data-close>Close</button></h3>
+ ${PIN?'':`<label class="full">Treasurer PIN<input id="sPin" type="password" inputmode="numeric" autocomplete="off" value="${esc(sale.pin||'')}" required></label>`}
+ <label>Ticket No<input id="sNo" type="number" inputmode="numeric" min="1" max="${TOTAL}" value="${esc(sale.no)}" required></label>
+ <label>Date sold<input id="sDate" type="date" value="${esc(sale.date)}"></label>
+ <label class="full">Buyer<input id="sBuyer" list="memList" value="${esc(sale.buyer)}" placeholder="Type a member's name, or any name" required></label>
+ ${sn?`<div class="hint">Member S/N ${sn} · ${esc(MEM[sn][1])} · ${esc(MEM[sn][2])}</div>`:`<label>Block (optional)<input id="sBlock" value="${esc(sale.block)}"></label><label>Country (optional)<input id="sCountry" value="${esc(sale.country)}"></label><div class="hint">Not in the member list? Type their name and it's saved as a guest.</div>`}
+ <div class="full"><div class="seg" role="group" aria-label="Ticket type"><button type="button" data-type="Paid" class="${sale.type==='Paid'?'on':''}">Paid ₹500</button><button type="button" data-type="Free" class="free ${sale.type==='Free'?'on':''}">Free (offer)</button></div></div>
+ ${sale.err?`<div class="err">${esc(sale.err)}</div>`:''}
+ <div class="bts">${PIN?'<button type="button" class="ibtn" data-logout>Forget PIN</button>':''}<button class="go" type="submit" ${sale.busy?'disabled':''}>${sale.busy?'Saving…':'Save sale'}</button></div>`}
+function readSale(){const v=id=>{const e=document.getElementById(id);return e?e.value:''};
+ sale.no=v('sNo');sale.date=v('sDate');sale.buyer=v('sBuyer');if(document.getElementById('sBlock')){sale.block=v('sBlock');sale.country=v('sCountry')}
+ const p=document.getElementById('sPin');if(p)sale.pin=p.value}
+const saleEl=document.getElementById('sale');
+saleEl.addEventListener('input',e=>{if(e.target.id!=='sBuyer')return;const had=!!buyerSn(sale.buyer);readSale();if(had!==!!buyerSn(sale.buyer)){const pos=e.target.selectionStart;drawSale();const b=document.getElementById('sBuyer');b.focus();try{b.setSelectionRange(pos,pos)}catch(x){}}});
+saleEl.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;
+ if(b.dataset.type){readSale();sale.type=b.dataset.type;drawSale()}
+ else if('close' in b.dataset){sale=null;drawSale()}
+ else if('logout' in b.dataset){PIN='';ls('pyssDrawPin','');readSale();drawSale();render()}});
+async function callScript(payload){const r=await fetch(APPS_SCRIPT_URL,{method:'POST',body:JSON.stringify(payload)});if(!r.ok)throw new Error('http');return r.json()}
+const ERR={bad_pin:'That PIN is wrong.',locked:'Too many wrong PINs. Try again in 10 minutes.',taken:'That ticket is already sold. Pick another number.',bad_ticket:'Ticket number must be 1 to '+TOTAL+'.',no_tab:'The sheet has no Tickets tab.',no_column:'The Tickets tab needs a "Ticket No" heading in row 1.',no_name:"Enter the buyer's name.",no_pin_set:'No PIN is set in the Apps Script yet (Project Settings → Script Properties → PIN).',not_sold:'That ticket is not sold.'};
+saleEl.addEventListener('submit',async e=>{e.preventDefault();if(sale.busy)return;readSale();
+ const no=Math.round(+sale.no),sn=buyerSn(sale.buyer),pin=PIN||sale.pin||'';
+ if(!pin){sale.err='Enter the treasurer PIN.';drawSale();return}
+ if(!(no>=1&&no<=TOTAL)){sale.err=ERR.bad_ticket;drawSale();return}
+ if(T[no]){sale.err=ERR.taken;drawSale();return}
+ if(!sn&&!sale.buyer.trim()){sale.err=ERR.no_name;drawSale();return}
+ sale.busy=true;sale.err='';drawSale();
+ const body={action:'sell',pin,ticket:no,sn:sn||'',name:sn?'':sale.buyer.trim(),block:sn?'':sale.block.trim(),country:sn?'':sale.country.trim(),type:sale.type,date:sale.date};
+ try{const res=await callScript(body);
+  if(!res.ok){sale.busy=false;sale.err=ERR[res.error]||'The sheet refused the sale ('+res.error+').';if(res.error==='bad_pin'){PIN='';ls('pyssDrawPin','')}drawSale();return}
+  PIN=pin;ls('pyssDrawPin',pin);
+  const m=sn?MEM[sn]:null;T[no]={no,name:m?m[0]:body.name,sn:sn||null,block:m?m[1]:body.block,country:m?m[2]:body.country,free:sale.type==='Free',date:sale.date};
+  sel=no;sale=null;drawSale();render();toast('Ticket '+no+' saved');setTimeout(load,4000)}
+ catch(err){sale.busy=false;sale.err="Couldn't reach the sheet. Check your connection and try again.";drawSale()}});
+document.getElementById('detail').addEventListener('click',async e=>{const b=e.target.closest('button');if(!b)return;
+ if(b.dataset.sell){openSale(+b.dataset.sell)}
+ else if(b.dataset.askcancel){cancelAsk=+b.dataset.askcancel;render()}
+ else if('cancelno' in b.dataset){cancelAsk=null;render()}
+ else if(b.dataset.cancel){const no=+b.dataset.cancel;b.disabled=true;
+  try{const res=await callScript({action:'cancel',pin:PIN,ticket:no});cancelAsk=null;
+   if(res.ok){delete T[no];render();toast('Ticket '+no+' is available again');setTimeout(load,4000)}
+   else{if(res.error==='bad_pin'){PIN='';ls('pyssDrawPin','')}render();toast(ERR[res.error]||'Could not cancel')}}
+  catch(err){cancelAsk=null;render();toast("Couldn't reach the sheet")}}});
 
 (()=>{const c=cached();if(c&&c.T)T=c.T})();
 render();load();
