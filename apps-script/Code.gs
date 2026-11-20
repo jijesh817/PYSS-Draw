@@ -17,6 +17,28 @@ const TAB = 'Tickets';
 const TOTAL = 100;
 const MAX_BAD_PINS = 10;          // wrong PINs allowed per 10 minutes, for everyone together
 
+// Headings accepted for each column (lower case, letters only) – the same ones the app reads.
+const HEADINGS = {
+  ticketno: ['ticketno', 'ticket', 'ticketnumber', 'no', 'tno'],
+  sn: ['sn', 'sno', 'serial', 'serialno', 'membersn'],
+  name: ['name', 'buyer', 'buyername', 'holder'],
+  block: ['block'],
+  country: ['country'],
+  type: ['type', 'freepaid', 'paidfree', 'free', 'payment'],
+  date: ['date', 'saledate', 'datesold', 'solddate']
+};
+
+// Which field each column holds ('' for columns the app doesn't use); first match per field wins.
+function columnFields(head) {
+  const used = {};
+  return head.map(h => {
+    for (const f in HEADINGS) {
+      if (!used[f] && HEADINGS[f].indexOf(h) >= 0) { used[f] = true; return f; }
+    }
+    return '';
+  });
+}
+
 function doPost(e) {
   const lock = LockService.getScriptLock();
   lock.waitLock(15000);           // one sale at a time, so a ticket can't be sold twice
@@ -42,7 +64,8 @@ function doPost(e) {
     if (!sh) return out({ ok: false, error: 'no_tab' });
     const values = sh.getDataRange().getValues();
     const head = values[0].map(h => String(h).toLowerCase().replace(/[^a-z]/g, ''));
-    const iT = head.indexOf('ticketno');
+    const cols = columnFields(head);
+    const iT = cols.indexOf('ticketno');
     if (iT < 0) return out({ ok: false, error: 'no_column' });
 
     const no = Math.round(Number(d.ticket));
@@ -67,13 +90,14 @@ function doPost(e) {
     const fields = {
       ticketno: no,
       sn: sn > 0 ? sn : '',
-      name: sn > 0 ? '' : name,
+      // A member is stored by S/N; their name is written only if the tab has no S/N column.
+      name: sn > 0 ? (cols.indexOf('sn') >= 0 ? '' : clean(d.memberName)) : name,
       block: sn > 0 ? '' : block,
       country: sn > 0 ? '' : country,
       type: d.type === 'Free' ? 'Free' : 'Paid',
       date: date
     };
-    sh.appendRow(head.map(h => (h in fields ? fields[h] : '')));
+    sh.appendRow(cols.map(f => (f ? fields[f] : '')));
     return out({ ok: true, ticket: no });
   } finally {
     lock.releaseLock();
