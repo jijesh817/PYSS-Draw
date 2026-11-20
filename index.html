@@ -286,7 +286,9 @@ function firstFree(){for(let n=1;n<=TOTAL;n++)if(!T[n])return n;return ''}
 function openSale(no){sale={no:no||firstFree(),buyer:'',block:'',country:'',type:'Paid',date:today(),err:'',busy:false};drawSale();
  const f=document.getElementById('sale');f.scrollIntoView({behavior:'smooth',block:'center'});const i=f.querySelector(PIN?'#sBuyer':'#sPin');i&&i.focus()}
 function today(){const d=new Date();return d.getFullYear()+'-'+p2(d.getMonth()+1)+'-'+p2(d.getDate())}
-function buyerSn(v){const m=/S\/N (\d+)\s*$/.exec(v||'');return m&&MEM[m[1]]?+m[1]:null}
+const normName=s=>String(s||'').toUpperCase().replace(/\s+/g,' ').trim();
+const BYNAME={};Object.entries(MEM).forEach(([sn,m])=>{const k=normName(m[0]);BYNAME[k]=k in BYNAME?0:+sn}); // 0 = name shared by two members
+function buyerSn(v){const m=/S\/N (\d+)\s*$/.exec(v||'');if(m)return MEM[m[1]]?+m[1]:null;const s=BYNAME[normName(v)];return s||null}
 function drawSale(){const f=document.getElementById('sale');if(!sale){f.hidden=true;f.innerHTML='';return}
  const sn=buyerSn(sale.buyer);f.hidden=false;
  f.innerHTML=`<h3>Sell a ticket <button type="button" data-close>Close</button></h3>
@@ -316,7 +318,7 @@ saleEl.addEventListener('submit',async e=>{e.preventDefault();if(sale.busy)retur
  if(T[no]){sale.err=ERR.taken;drawSale();return}
  if(!sn&&!sale.buyer.trim()){sale.err=ERR.no_name;drawSale();return}
  sale.busy=true;sale.err='';drawSale();
- const body={action:'sell',pin,ticket:no,sn:sn||'',name:sn?'':sale.buyer.trim(),block:sn?'':sale.block.trim(),country:sn?'':sale.country.trim(),type:sale.type,date:sale.date};
+ const body={action:'sell',pin,ticket:no,sn:sn||'',memberName:sn?MEM[sn][0]:'',name:sn?'':sale.buyer.trim(),block:sn?'':sale.block.trim(),country:sn?'':sale.country.trim(),type:sale.type,date:sale.date};
  try{const res=await callScript(body);
   if(!res.ok){sale.busy=false;sale.err=ERR[res.error]||'The sheet refused the sale ('+res.error+').';if(res.error==='bad_pin'){PIN='';ls('pyssDrawPin','')}drawSale();return}
   PIN=pin;ls('pyssDrawPin',pin);
