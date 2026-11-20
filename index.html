@@ -175,7 +175,14 @@ const fd=s=>{const m=/^(\d{4})-(\d{2})-(\d{2})$/.exec(s||'');return m?`${+m[3]} 
 const inr=n=>'₹'+n.toLocaleString('en-IN');
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 function ls(k,v){try{if(v===undefined)return localStorage.getItem(k);localStorage.setItem(k,v)}catch(e){return null}}
-let T={};          // ticket no -> {name, block, country, free, date, sn}
+let T={};
+// Sales/cancels made on this phone, kept on screen until Google's copy of the sheet catches up
+const PENDING={},PENDING_MS=180000;
+function applyPending(t){const now=Date.now();
+ for(const [no,p] of Object.entries(PENDING)){const inSheet=!!t[no];
+  if(now-p.ts>PENDING_MS||(p.op==='sell'?inSheet:!inSheet)){delete PENDING[no];continue}
+  if(p.op==='sell')t[no]=p.t;else delete t[no]}
+ return t}          // ticket no -> {name, block, country, free, date, sn}
 let filter='all',sel=null;
 
 // ---- Sheet reading ----
@@ -249,7 +256,7 @@ async function load(){
  if(loading)return;loading=true;const btn=document.getElementById('refresh');btn.disabled=true;
  try{const [tt,mt]=await Promise.all([fetchTab(TICKETS_TAB),fetchTab(MEMBERS_TAB).catch(()=>null)]);
   let B={};try{B=mt?parseMembers(mt):{}}catch(e){}
-  const {out,bad,dup}=parseTickets(tt,B);T=out;const ts=Date.now();ls('pyssDraw',JSON.stringify({T,ts}));render();
+  const {out,bad,dup}=parseTickets(tt,B);T=applyPending(out);const ts=Date.now();ls('pyssDraw',JSON.stringify({T,ts}));render();
   const w=[];if(bad.length)w.push(`check sheet row${bad.length>1?'s':''} ${bad.slice(0,5).join(', ')}${bad.length>5?'…':''} (ticket number or name missing)`);
   if(dup.length)w.push(`ticket${dup.length>1?'s':''} ${[...new Set(dup)].join(', ')} entered twice (first row used)`);
   status('Updated '+ago(ts)+(w.length?' · '+w.join(' · '):''),w.length>0)}
@@ -314,7 +321,7 @@ saleEl.addEventListener('submit',async e=>{e.preventDefault();if(sale.busy)retur
   if(!res.ok){sale.busy=false;sale.err=ERR[res.error]||'The sheet refused the sale ('+res.error+').';if(res.error==='bad_pin'){PIN='';ls('pyssDrawPin','')}drawSale();return}
   PIN=pin;ls('pyssDrawPin',pin);
   const m=sn?MEM[sn]:null;T[no]={no,name:m?m[0]:body.name,sn:sn||null,block:m?m[1]:body.block,country:m?m[2]:body.country,free:sale.type==='Free',date:sale.date};
-  sel=no;sale=null;drawSale();render();toast('Ticket '+no+' saved');setTimeout(load,4000)}
+  PENDING[no]={op:'sell',t:T[no],ts:Date.now()};sel=no;sale=null;drawSale();render();toast('Ticket '+no+' saved');setTimeout(load,4000)}
  catch(err){sale.busy=false;sale.err="Couldn't reach the sheet. Check your connection and try again.";drawSale()}});
 document.getElementById('detail').addEventListener('click',async e=>{const b=e.target.closest('button');if(!b)return;
  if(b.dataset.sell){openSale(+b.dataset.sell)}
@@ -322,7 +329,7 @@ document.getElementById('detail').addEventListener('click',async e=>{const b=e.t
  else if('cancelno' in b.dataset){cancelAsk=null;render()}
  else if(b.dataset.cancel){const no=+b.dataset.cancel;b.disabled=true;
   try{const res=await callScript({action:'cancel',pin:PIN,ticket:no});cancelAsk=null;
-   if(res.ok){delete T[no];render();toast('Ticket '+no+' is available again');setTimeout(load,4000)}
+   if(res.ok){delete T[no];PENDING[no]={op:'cancel',ts:Date.now()};render();toast('Ticket '+no+' is available again');setTimeout(load,4000)}
    else{if(res.error==='bad_pin'){PIN='';ls('pyssDrawPin','')}render();toast(ERR[res.error]||'Could not cancel')}}
   catch(err){cancelAsk=null;render();toast("Couldn't reach the sheet")}}});
 
