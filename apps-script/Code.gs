@@ -13,6 +13,9 @@
  * and this script checks it here.
  */
 
+// The PYSS sheet. Used when this script was created on its own at script.google.com
+// instead of from the sheet's Extensions → Apps Script menu.
+const SHEET_ID = '1aI3iV_viYfMjQY9MLlQ1r8LHHOdeM8Vksp_nr6bQG-k';
 const TAB = 'Tickets';
 const TOTAL = 100;
 const MAX_BAD_PINS = 10;          // wrong PINs allowed per 10 minutes, for everyone together
@@ -39,9 +42,42 @@ function columnFields(head) {
   });
 }
 
+function book() {
+  return SpreadsheetApp.getActiveSpreadsheet() || SpreadsheetApp.openById(SHEET_ID);
+}
+
+// Opening the web app link in a browser shows this check, so setup problems are easy to spot.
+// It reveals nothing private: only whether each part is in place.
+function doGet() {
+  const r = { app: 'PYSS Bumper Draw', pinSet: !!PropertiesService.getScriptProperties().getProperty('PIN') };
+  try {
+    const ss = book();
+    r.sheet = ss.getName();
+    const sh = ss.getSheetByName(TAB);
+    r.ticketsTab = !!sh;
+    if (sh) {
+      const head = sh.getRange(1, 1, 1, Math.max(1, sh.getLastColumn())).getValues()[0]
+        .map(h => String(h).toLowerCase().replace(/[^a-z]/g, ''));
+      r.ticketNoColumn = columnFields(head).indexOf('ticketno') >= 0;
+    }
+  } catch (err) {
+    r.sheetError = String(err && err.message || err);
+  }
+  r.ready = !!(r.pinSet && r.ticketsTab && r.ticketNoColumn);
+  return out(r);
+}
+
 function doPost(e) {
+  try {
+    return handle(e);
+  } catch (err) {
+    return out({ ok: false, error: 'script_error', message: String(err && err.message || err).slice(0, 200) });
+  }
+}
+
+function handle(e) {
   const lock = LockService.getScriptLock();
-  lock.waitLock(15000);           // one sale at a time, so a ticket can't be sold twice
+  if (!lock.tryLock(15000)) return out({ ok: false, error: 'busy' });   // one sale at a time, so a ticket can't be sold twice
   try {
     let d;
     try { d = JSON.parse((e && e.postData && e.postData.contents) || '{}'); }
@@ -60,7 +96,7 @@ function doPost(e) {
 
     if (d.action === 'check') return out({ ok: true });
 
-    const sh = SpreadsheetApp.getActive().getSheetByName(TAB);
+    const sh = book().getSheetByName(TAB);
     if (!sh) return out({ ok: false, error: 'no_tab' });
     const values = sh.getDataRange().getValues();
     const head = values[0].map(h => String(h).toLowerCase().replace(/[^a-z]/g, ''));
