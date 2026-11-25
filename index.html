@@ -111,7 +111,7 @@ input[type=search]{width:100%;padding:10px 12px;border-radius:10px;border:1px so
 .go:disabled{opacity:.6;cursor:default}
 .dact{margin-top:10px;display:flex;gap:8px;flex-wrap:wrap}
 .dact .danger{border-color:#f3c3bd;color:#b42318}
-.rem textarea{width:100%;min-height:118px;font:14px/1.45 var(--ml);padding:10px;border:1px solid var(--line);border-radius:10px;color:var(--ink);background:#fff;resize:vertical}
+.rem textarea{width:100%;min-height:300px;font:14px/1.45 var(--ml);padding:10px;border:1px solid var(--line);border-radius:10px;color:var(--ink);background:#fff;resize:vertical}
 .rem .hint{font-size:12px;color:var(--mut);margin:4px 0 10px}
 .rem .err{font-size:13px;color:#b42318;font-weight:600;margin:6px 0}
 .rem .pinrow{display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap}
@@ -380,7 +380,7 @@ document.getElementById('detail').addEventListener('click',async e=>{const b=e.t
 
 // ---- WhatsApp reminders (treasurer only): opens each member's chat with the message typed ----
 const remBtn=document.getElementById('remBtn'),remSec=document.getElementById('remSec');remBtn.hidden=!sellOn;
-const DEF_MSG='നമസ്കാരം {name} 🙏\nPYSS ബമ്പർ ഡ്രോ – ടിക്കറ്റ് ഒന്നിന് ₹500 മാത്രം. ആകെ ₹45,000 സമ്മാനങ്ങൾ!\nഇനി {left} ടിക്കറ്റുകൾ മാത്രം ബാക്കി. ഒഴിവുള്ള നമ്പറുകൾ ഇവിടെ കാണാം: {link}\nഇഷ്ടമുള്ള നമ്പർ മറുപടിയായി അയക്കുക.';
+const DEF_MSG="നമസ്കാരം {name} 🙏\n\nPYSS പുതുവത്സര മെമ്പർഷിപ്പ് കാമ്പയിന്റെ ഭാഗമായി *ബമ്പർ ഡ്രോ* നടത്തുന്നു.\n\n🎟️ ടിക്കറ്റ് ഒന്നിന് ₹500 മാത്രം\n🏆 ആകെ ₹45,000 സമ്മാനങ്ങൾ\n   ഒന്നാം സമ്മാനം ₹10,000\n   രണ്ടാം സമ്മാനം ₹5,000 (4 പേർക്ക്)\n   മൂന്നാം സമ്മാനം ₹3,000 (5 പേർക്ക്)\n\nഇനി {left} ടിക്കറ്റുകൾ മാത്രം ബാക്കി. ഒഴിവുള്ള നമ്പറുകൾ ഇവിടെ കാണാം:\n{link}\n\nഇഷ്ടമുള്ള ടിക്കറ്റ് നമ്പർ മറുപടിയായി അയക്കുക. നന്ദി! 🙏\n– PYSS കമ്മിറ്റി";
 let REM=null;   // {contacts:{sn:{phone,reminded}}, all:false, err:'', busy:false}
 const remMsg=()=>ls('pyssRemMsg')||DEF_MSG;
 const titleName=s=>String(s).toLowerCase().replace(/(^|[\s(.])([a-z])/g,(m,a,b)=>a+b.toUpperCase());
