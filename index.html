@@ -379,13 +379,14 @@ document.getElementById('detail').addEventListener('click',async e=>{const b=e.t
 
 
 // ---- WhatsApp reminders (treasurer only): opens each member's chat with the message typed ----
-const remBtn=document.getElementById('remBtn'),remSec=document.getElementById('remSec');remBtn.hidden=!sellOn;
+const REMINDERS_ON=false;   // switched off for now; set to true to bring back Send reminders
+const remBtn=document.getElementById('remBtn'),remSec=document.getElementById('remSec');remBtn.hidden=!(sellOn&&REMINDERS_ON);
 const DEF_MSG="നമസ്കാരം {name} 🙏\n\nPYSS പുതുവത്സര മെമ്പർഷിപ്പ് കാമ്പയിന്റെ ഭാഗമായി *ബമ്പർ ഡ്രോ* നടത്തുന്നു.\n\n🎟️ ടിക്കറ്റ് ഒന്നിന് ₹500 മാത്രം\n🏆 ആകെ ₹45,000 സമ്മാനങ്ങൾ\n   ഒന്നാം സമ്മാനം ₹10,000\n   രണ്ടാം സമ്മാനം ₹5,000 (4 പേർക്ക്)\n   മൂന്നാം സമ്മാനം ₹3,000 (5 പേർക്ക്)\n\nഇനി {left} ടിക്കറ്റുകൾ മാത്രം ബാക്കി. ഒഴിവുള്ള നമ്പറുകൾ ഇവിടെ കാണാം:\n{link}\n\nഇഷ്ടമുള്ള ടിക്കറ്റ് നമ്പർ മറുപടിയായി അയക്കുക. നന്ദി! 🙏\n– PYSS കമ്മിറ്റി";
 let REM=null;   // {contacts:{sn:{phone,reminded}}, all:false, err:'', busy:false}
 const remMsg=()=>ls('pyssRemMsg')||DEF_MSG;
 const titleName=s=>String(s).toLowerCase().replace(/(^|[\s(.])([a-z])/g,(m,a,b)=>a+b.toUpperCase());
 const REM_ERR={no_contacts:'The script has no CONTACTS_SHEET_ID yet. Add it in Apps Script → Project Settings → Script Properties.',contacts_columns:'The contacts sheet needs an S/N column and a WhatsApp column in row 1.',bad_pin:'That PIN is wrong.',locked:'Too many wrong PINs. Try again in 10 minutes.'};
-remBtn.onclick=()=>{if(!REM)REM={contacts:null,all:false,err:'',busy:false};remSec.hidden=false;drawRem();if(PIN&&!REM.contacts)loadContacts();remSec.scrollIntoView({behavior:'smooth',block:'start'})};
+remBtn.onclick=()=>{if(!REMINDERS_ON)return;if(!REM)REM={contacts:null,all:false,err:'',busy:false};remSec.hidden=false;drawRem();if(PIN&&!REM.contacts)loadContacts();remSec.scrollIntoView({behavior:'smooth',block:'start'})};
 async function loadContacts(pin){REM.busy=true;REM.err='';drawRem();
  try{const res=await callScript({action:'contacts',pin:pin||PIN});REM.busy=false;
   if(!res.ok){if(res.error==='bad_pin'){PIN='';ls('pyssDrawPin','')}REM.err=res.error==='script_error'?'Sheet script problem: '+(res.message||''):REM_ERR[res.error]||('Could not load numbers ('+res.error+').');drawRem();return}
