@@ -52,9 +52,9 @@ h1{margin:2px 0 0;font-size:30px;line-height:1;font-weight:800;letter-spacing:-.
 .chip{border:1px solid var(--line);background:#fff;color:var(--ink);border-radius:999px;padding:6px 12px;font:700 13px var(--sans);cursor:pointer}
 .chip.on{background:var(--ink);border-color:var(--ink);color:#fff}
 input[type=search]{width:100%;padding:10px 12px;border-radius:10px;border:1px solid var(--line);background:#fff;color:var(--ink);font:15px var(--sans);margin-bottom:10px}
-.grid{display:grid;grid-template-columns:repeat(10,1fr);gap:5px}
-.tk{aspect-ratio:1;max-width:100%;border-radius:8px;border:1px dashed #d8cdb3;background:#fffdf8;color:#8f8163;--fs:17px;font:800 var(--fs) var(--sans);letter-spacing:-.02em;font-variant-numeric:tabular-nums;cursor:pointer;padding:0;display:flex;align-items:center;justify-content:center}
-.tk.k3{font-size:calc(var(--fs) * .8);letter-spacing:-.04em}
+.grid{display:grid;grid-template-columns:repeat(8,1fr);gap:6px}
+.tk{aspect-ratio:1;max-width:100%;border-radius:8px;border:1px dashed #d8cdb3;background:#fffdf8;color:#8f8163;--fs:20px;font:800 var(--fs) var(--sans);letter-spacing:-.02em;font-variant-numeric:tabular-nums;cursor:pointer;padding:0;display:flex;align-items:center;justify-content:center}
+.tk.k3{font-size:calc(var(--fs) * .9);letter-spacing:-.03em}
 .tk.s{background:linear-gradient(135deg,var(--gold),var(--gold2));border:1px solid var(--gold);color:#fff}
 .tk.fr{background:var(--free);border:1px solid var(--free);color:#fff}
 .tk.dim{opacity:.18}
@@ -104,8 +104,8 @@ input[type=search]{width:100%;padding:10px 12px;border-radius:10px;border:1px so
 .toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:#fff;padding:8px 14px;border-radius:999px;font-size:13px;opacity:0;transition:opacity .2s;pointer-events:none}
 .toast.on{opacity:1}
 button:focus-visible,input:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
-@media (max-width:520px){.kpis{grid-template-columns:repeat(2,1fr)}h1{font-size:26px}.grid{gap:3px}.tk{--fs:15px;border-radius:6px}#grid{margin-inline:-6px}}
-@media (max-width:360px){.tk{--fs:13px}}
+@media (max-width:520px){.kpis{grid-template-columns:repeat(2,1fr)}h1{font-size:26px}.grid{gap:5px}.tk{--fs:18px;border-radius:8px}}
+@media (max-width:360px){.grid{gap:4px}.tk{--fs:16px}}
 @media (prefers-reduced-motion:reduce){.toast{transition:none}}
 </style>
 </head>
