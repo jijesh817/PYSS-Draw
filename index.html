@@ -244,7 +244,7 @@ function render(){const {sold,free,paid}=stats();
  const soldRow=t=>`<div class="li ${t.free?'fr':''}" data-no="${t.no}"><div class="n">${t.no}</div><div class="w"><b>${esc(t.name)}</b><span>${esc([t.block,t.country].filter(Boolean).join(' · '))}${t.date?(t.block||t.country?' · ':'')+esc(fd(t.date)):''}</span></div><span class="tag ${t.free?'fr':''}">${t.free?'Free':'₹500'}</span></div>`;
  let html,count;
  if(listMode==='all'){const nos=[];for(let no=1;no<=TOTAL;no++)if(matches(T[no],no))nos.push(no);count=nos.length;
-  html=nos.length?nos.map(no=>T[no]?soldRow(T[no]):`<div class="li av" data-no="${no}"><div class="n">${no}</div><div class="w"><b>Available</b></div><span class="tag av">Open</span></div>`).join(''):'<div class="empty">No tickets match.</div>';
+  html=nos.length?nos.map(no=>T[no]?soldRow(T[no]):`<div class="li av" data-no="${no}" aria-label="Ticket ${no}, not sold"><div class="n">${no}</div><div class="w"></div><span></span></div>`).join(''):'<div class="empty">No tickets match.</div>';
   document.getElementById('lcount').textContent=count+' of '+TOTAL;}
  else{const L=Object.values(T).sort((a,b)=>a.no-b.no).filter(t=>matches(t,t.no));count=L.length;
   html=filter==='avail'?'<div class="empty">Switch to <b>All 1–100</b> to list available tickets.</div>':L.length?L.map(soldRow).join(''):'<div class="empty">No tickets sold yet.</div>';
@@ -264,7 +264,7 @@ document.getElementById('q').oninput=render;
 document.getElementById('lmode').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;listMode=b.dataset.m;ls('pyssDrawList',listMode);render()});
 const line=t=>`${t.no}. ${t.name}${t.block?' ('+t.block+')':''}${t.free?' – Free':''}`;
 document.getElementById('copy').onclick=()=>{const L=Object.values(T).sort((a,b)=>a.no-b.no);const {sold,free,paid}=stats();
- let body;if(listMode==='all'){const a=[];for(let no=1;no<=TOTAL;no++)a.push(T[no]?line(T[no]):`${no}. —`);body=a.join('\n')}
+ let body;if(listMode==='all'){const a=[];for(let no=1;no<=TOTAL;no++)a.push(T[no]?line(T[no]):`${no}.`);body=a.join('\n')}
  else body=L.length?L.map(line).join('\n'):'No tickets sold yet.';
  const txt=`PYSS Bumper Draw – ticket holders\n`+body+`\n\nSold ${sold}/${TOTAL} (${paid} paid, ${free} free) · ${TOTAL-sold} available`;
  if(navigator.share&&/Android|iPhone|iPad/i.test(navigator.userAgent)){navigator.share({text:txt}).catch(()=>{});return}
