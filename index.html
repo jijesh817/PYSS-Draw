@@ -111,6 +111,18 @@ input[type=search]{width:100%;padding:10px 12px;border-radius:10px;border:1px so
 .go:disabled{opacity:.6;cursor:default}
 .dact{margin-top:10px;display:flex;gap:8px;flex-wrap:wrap}
 .dact .danger{border-color:#f3c3bd;color:#b42318}
+.rem textarea{width:100%;min-height:118px;font:14px/1.45 var(--ml);padding:10px;border:1px solid var(--line);border-radius:10px;color:var(--ink);background:#fff;resize:vertical}
+.rem .hint{font-size:12px;color:var(--mut);margin:4px 0 10px}
+.rem .err{font-size:13px;color:#b42318;font-weight:600;margin:6px 0}
+.rem .pinrow{display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap}
+.rem .pinrow label{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--mut);font-weight:600}
+.rem .pinrow input{font:15px var(--sans);padding:9px 10px;border:1px solid var(--line);border-radius:9px;width:160px}
+.rrow{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center;padding:9px 0;border-top:1px solid var(--line)}
+.rrow .w{min-width:0}.rrow b{display:block;overflow-wrap:anywhere}.rrow span{font-size:12px;color:var(--mut)}
+.rrow.done b{color:var(--mut)}
+.rrow .ok{color:var(--free);font-weight:700}
+.wa{display:inline-flex;align-items:center;gap:6px;background:#25d366;color:#fff;text-decoration:none;font:800 13px var(--sans);border-radius:999px;padding:8px 14px;white-space:nowrap}
+.rrow.done .wa{background:#e7f4ea;color:var(--free)}
 .toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:#fff;padding:8px 14px;border-radius:999px;font-size:13px;opacity:0;transition:opacity .2s;pointer-events:none}
 .toast.on{opacity:1}
 button:focus-visible,input:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
@@ -131,7 +143,7 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--ink);outline-of
   </div>
  </header>
 
- <div class="top"><div class="status" id="st">Loading tickets…</div><button class="ibtn" id="refresh">Refresh</button><button class="ibtn" id="sellBtn" hidden>Sell a ticket</button><button class="ibtn solid" id="install" hidden>Install app</button></div>
+ <div class="top"><div class="status" id="st">Loading tickets…</div><button class="ibtn" id="refresh">Refresh</button><button class="ibtn" id="sellBtn" hidden>Sell a ticket</button><button class="ibtn" id="remBtn" hidden>Send reminders</button><button class="ibtn solid" id="install" hidden>Install app</button></div>
  <div class="iosTip" id="iosTip" hidden>To install on iPhone: tap <b>Share</b>, then <b>Add to Home Screen</b>.</div>
 
  <div class="kpis">
@@ -152,6 +164,8 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--ink);outline-of
   <form class="sale" id="sale" hidden autocomplete="off"></form>
   <datalist id="memList"></datalist>
  </section>
+
+ <section class="sec" id="remSec" hidden></section>
 
  <section class="sec">
   <div class="lhead"><h2>Ticket holders <small id="lcount"></small></h2>
@@ -363,6 +377,54 @@ document.getElementById('detail').addEventListener('click',async e=>{const b=e.t
    else{if(res.error==='bad_pin'){PIN='';ls('pyssDrawPin','')}render();toast(res.error==='script_error'?'Sheet script problem: '+(res.message||''):ERR[res.error]||'Could not cancel')}}
   catch(err){cancelAsk=null;render();toast("Couldn't reach the sheet")}}});
 
+
+// ---- WhatsApp reminders (treasurer only): opens each member's chat with the message typed ----
+const remBtn=document.getElementById('remBtn'),remSec=document.getElementById('remSec');remBtn.hidden=!sellOn;
+const DEF_MSG='നമസ്കാരം {name} 🙏\nPYSS ബമ്പർ ഡ്രോ – ടിക്കറ്റ് ഒന്നിന് ₹500 മാത്രം. ആകെ ₹45,000 സമ്മാനങ്ങൾ!\nഇനി {left} ടിക്കറ്റുകൾ മാത്രം ബാക്കി. ഒഴിവുള്ള നമ്പറുകൾ ഇവിടെ കാണാം: {link}\nഇഷ്ടമുള്ള നമ്പർ മറുപടിയായി അയക്കുക.';
+let REM=null;   // {contacts:{sn:{phone,reminded}}, all:false, err:'', busy:false}
+const remMsg=()=>ls('pyssRemMsg')||DEF_MSG;
+const titleName=s=>String(s).toLowerCase().replace(/(^|[\s(.])([a-z])/g,(m,a,b)=>a+b.toUpperCase());
+const REM_ERR={no_contacts:'The script has no CONTACTS_SHEET_ID yet. Add it in Apps Script → Project Settings → Script Properties.',contacts_columns:'The contacts sheet needs an S/N column and a WhatsApp column in row 1.',bad_pin:'That PIN is wrong.',locked:'Too many wrong PINs. Try again in 10 minutes.'};
+remBtn.onclick=()=>{if(!REM)REM={contacts:null,all:false,err:'',busy:false};remSec.hidden=false;drawRem();if(PIN&&!REM.contacts)loadContacts();remSec.scrollIntoView({behavior:'smooth',block:'start'})};
+async function loadContacts(pin){REM.busy=true;REM.err='';drawRem();
+ try{const res=await callScript({action:'contacts',pin:pin||PIN});REM.busy=false;
+  if(!res.ok){if(res.error==='bad_pin'){PIN='';ls('pyssDrawPin','')}REM.err=res.error==='script_error'?'Sheet script problem: '+(res.message||''):REM_ERR[res.error]||('Could not load numbers ('+res.error+').');drawRem();return}
+  if(pin){PIN=pin;ls('pyssDrawPin',pin)}REM.contacts=res.contacts||{};drawRem()}
+ catch(e){REM.busy=false;REM.err="Couldn't reach the sheet script. Check your connection and try again.";drawRem()}}
+function waLink(sn,c){const left=TOTAL-Object.keys(T).length;
+ const txt=remMsg().replace(/\{name\}/g,titleName(MEM[sn][0])).replace(/\{left\}/g,left).replace(/\{link\}/g,location.origin+location.pathname);
+ return 'https://wa.me/'+c.phone+'?text='+encodeURIComponent(txt)}
+function remRows(){const C=REM.contacts,has=new Set(Object.values(T).filter(t=>t.sn).map(t=>+t.sn));
+ const sns=Object.keys(C).map(Number).filter(sn=>MEM[sn]).sort((a,b)=>MEM[a][0].localeCompare(MEM[b][0]));
+ const todo=sns.filter(sn=>!has.has(sn)),list=REM.all?sns:todo,missing=Object.keys(MEM).length-sns.length;
+ const sent=list.filter(sn=>C[sn].reminded).length;
+ return {list,todo,sns,missing,sent,has}}
+function drawRem(){if(!REM){remSec.hidden=true;return}
+ let h=`<div class="rem"><h2>WhatsApp reminders <small><button type="button" class="ibtn" data-rclose>Close</button></small></h2>`;
+ if(!REM.contacts){
+  h+=`<p class="hint">Each member's chat opens in your WhatsApp with the message ready; you tap Send. Numbers come from your private contacts sheet and are only shown after the PIN.</p>`;
+  if(REM.busy)h+='<p class="hint">Loading numbers…</p>';
+  else if(!PIN)h+=`<form class="pinrow" id="remPinF"><label>Treasurer PIN<input id="remPin" type="password" inputmode="numeric" autocomplete="off" required></label><button class="ibtn solid" type="submit">Show members</button></form>`;
+  else h+=`<button class="ibtn solid" type="button" data-rload>Load members</button>`;
+  if(REM.err)h+=`<div class="err">${esc(REM.err)}</div>`;
+  remSec.innerHTML=h+'</div>';return}
+ const {list,todo,sns,missing,sent,has}=remRows();
+ h+=`<label class="hint" for="remMsg">Message ( {name}, {left} and {link} are filled in for each member )</label><textarea id="remMsg">${esc(remMsg())}</textarea>
+  <div class="hint"><button type="button" class="ibtn" data-rreset>Reset message</button></div>
+  <div class="filters"><button class="chip ${REM.all?'':'on'}" data-rall="0">Not bought yet (${todo.length})</button><button class="chip ${REM.all?'on':''}" data-rall="1">Everyone (${sns.length})</button></div>
+  <div class="hint">${sent} of ${list.length} reminded${missing>0?` · ${missing} members have no number in the contacts sheet`:''}</div><div id="remList">`;
+ h+=list.length?list.map(sn=>{const c=REM.contacts[sn],m=MEM[sn];return `<div class="rrow ${c.reminded?'done':''}"><div class="w"><b>${esc(m[0])}</b><span>${esc(m[1])} · ${esc(m[2])} · +${esc(c.phone)}${has.has(sn)?' · has a ticket':''}${c.reminded?` · <span class="ok">reminded ${esc(fd(c.reminded))}</span>`:''}</span></div><a class="wa" href="${esc(waLink(sn,c))}" target="_blank" rel="noopener" data-rsn="${sn}">${c.reminded?'Send again':'WhatsApp'}</a></div>`}).join(''):'<div class="empty">Everyone in the contacts sheet already has a ticket. 🎉</div>';
+ remSec.innerHTML=h+'</div></div>'}
+remSec.addEventListener('submit',e=>{e.preventDefault();const p=document.getElementById('remPin').value.trim();if(p)loadContacts(p)});
+remSec.addEventListener('input',e=>{if(e.target.id!=='remMsg')return;ls('pyssRemMsg',e.target.value);
+ document.querySelectorAll('#remList .wa').forEach(a=>{const sn=+a.dataset.rsn;a.href=waLink(sn,REM.contacts[sn])})});
+remSec.addEventListener('click',e=>{const b=e.target.closest('[data-rclose],[data-rload],[data-rreset],[data-rall],[data-rsn]');if(!b)return;
+ if('rclose' in b.dataset){REM=null;drawRem();return}
+ if('rload' in b.dataset){loadContacts();return}
+ if('rreset' in b.dataset){ls('pyssRemMsg','');drawRem();return}
+ if(b.dataset.rall){REM.all=b.dataset.rall==='1';drawRem();return}
+ if(b.dataset.rsn){const sn=+b.dataset.rsn,d=today();REM.contacts[sn].reminded=d;   // the link itself opens WhatsApp
+  setTimeout(drawRem,300);callScript({action:'mark',pin:PIN,sn,date:d}).catch(()=>{})}});
 
 (()=>{const c=cached();if(c&&c.T)T=c.T})();
 render();load();
