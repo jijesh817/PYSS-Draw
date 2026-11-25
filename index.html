@@ -75,6 +75,20 @@ input[type=search]{width:100%;padding:10px 12px;border-radius:10px;border:1px so
 .tag{font-size:11px;font-weight:800;border-radius:999px;padding:2px 8px;white-space:nowrap;background:var(--golds);color:#8a6a14}
 .tag.fr{background:var(--frees);color:var(--free)}
 .empty{font-size:13px;color:var(--mut);padding:8px 0}
+.li.av{padding:5px 0}
+.li.av .n{background:#fffdf8;border:1px dashed #d8cdb3;color:#b3a681;font-size:18px;padding:4px 0}
+.li.av .w b{color:#b3a681;font-weight:600}
+.tag.av{background:#f4efe2;color:#9a8c68}
+.lhead{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap}
+.lhead h2{margin:0}
+.seg2{display:flex;border:1px solid var(--line);border-radius:999px;overflow:hidden}
+.seg2 button{border:0;background:#fff;color:var(--ink);font:700 13px var(--sans);padding:6px 12px;cursor:pointer}
+.seg2 button.on{background:var(--ink);color:#fff}
+.shbar{display:flex;justify-content:flex-end;gap:8px;margin-top:10px;flex-wrap:wrap}
+.ov{position:fixed;inset:0;background:rgba(18,24,48,.82);z-index:50;display:flex;flex-direction:column;align-items:center;gap:10px;padding:calc(16px + env(safe-area-inset-top,0px)) 16px calc(16px + env(safe-area-inset-bottom,0px));overflow:auto}
+.ov img{max-width:min(100%,540px);height:auto;border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,.35)}
+.ov p{color:#fff;font-size:14px;margin:0;text-align:center}
+.ov .row{display:flex;gap:8px}
 .prizes{display:flex;flex-direction:column;gap:8px}
 .pz{display:grid;grid-template-columns:36px 1fr auto;gap:10px;align-items:center;border:1px solid var(--line);border-radius:12px;padding:10px 12px}
 .medal{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800}
@@ -144,9 +158,10 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--ink);outline-of
  </section>
 
  <section class="sec">
-  <h2>Ticket holders <small id="lcount"></small></h2>
+  <div class="lhead"><h2>Ticket holders <small id="lcount"></small></h2>
+   <div class="seg2" id="lmode" role="group" aria-label="List view"><button data-m="sold">Sold</button><button data-m="all">All 1–100</button></div></div>
   <div class="list" id="list"></div>
-  <div style="display:flex;justify-content:flex-end;margin-top:10px"><button class="ibtn" id="copy">Share list</button></div>
+  <div class="shbar"><button class="ibtn" id="copy">Share as text</button><button class="ibtn solid" id="shareImg">Share as image</button></div>
  </section>
 
  <section class="sec">
@@ -160,6 +175,7 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--ink);outline-of
  </section>
  <div class="foot ml">പുതുവത്സരത്തെ വരവേൽക്കാം… PYSS നോടൊപ്പം സമ്മാനങ്ങൾ നേടാം…</div>
 </div>
+<div class="ov" id="ov" hidden><p>Long-press the picture to save or share it.</p><img id="ovImg" alt="PYSS Bumper Draw ticket list"><div class="row"><a class="ibtn" id="ovDl" download="pyss-draw-tickets.png">Save picture</a><button class="ibtn solid" id="ovClose">Close</button></div></div>
 <div class="toast" id="toast"></div>
 <script>
 // ---- Settings: the PYSS Google Sheet and its tabs (see README) ----
@@ -185,7 +201,7 @@ function applyPending(t){const now=Date.now();
   if(now-p.ts>PENDING_MS||(p.op==='sell'?inSheet:!inSheet)){delete PENDING[no];continue}
   if(p.op==='sell')t[no]=p.t;else delete t[no]}
  return t}          // ticket no -> {name, block, country, free, date, sn}
-let filter='all',sel=null;
+let filter='all',sel=null,listMode=ls('pyssDrawList')==='all'?'all':'sold';
 
 // ---- Sheet reading ----
 function gviz(text){const s=text.indexOf('{'),e=text.lastIndexOf('}');if(s<0||e<0)throw new Error('format');const j=JSON.parse(text.slice(s,e+1));if(j.status==='error')throw new Error('sheet');return j}
@@ -229,9 +245,16 @@ function render(){const {sold,free,paid}=stats();
  document.getElementById('barCap').textContent=`${sold} of ${TOTAL} tickets taken · ${paid} paid, ${free} free`;
  let g='';for(let no=1;no<=TOTAL;no++){const t=T[no];g+=`<button class="tk ${no>99?'k3':''} ${t?(t.free?'fr':'s'):''} ${matches(t,no)?'':'dim'} ${sel===no?'sel':''}" data-no="${no}" aria-label="Ticket ${no}${t?', '+esc(t.name):', available'}">${no}</button>`}
  document.getElementById('grid').innerHTML=g;
- const L=Object.values(T).sort((a,b)=>a.no-b.no).filter(t=>matches(t,t.no));
- document.getElementById('lcount').textContent=L.length+(L.length===1?' ticket':' tickets');
- document.getElementById('list').innerHTML=filter==='avail'?'<div class="empty">Available tickets are shown in the grid above.</div>':L.length?L.map(t=>`<div class="li ${t.free?'fr':''}" data-no="${t.no}"><div class="n">${t.no}</div><div class="w"><b>${esc(t.name)}</b><span>${esc([t.block,t.country].filter(Boolean).join(' · '))}${t.date?(t.block||t.country?' · ':'')+esc(fd(t.date)):''}</span></div><span class="tag ${t.free?'fr':''}">${t.free?'Free':'₹500'}</span></div>`).join(''):'<div class="empty">No tickets sold yet.</div>';
+ document.querySelectorAll('#lmode button').forEach(b=>b.classList.toggle('on',b.dataset.m===listMode));
+ const soldRow=t=>`<div class="li ${t.free?'fr':''}" data-no="${t.no}"><div class="n">${t.no}</div><div class="w"><b>${esc(t.name)}</b><span>${esc([t.block,t.country].filter(Boolean).join(' · '))}${t.date?(t.block||t.country?' · ':'')+esc(fd(t.date)):''}</span></div><span class="tag ${t.free?'fr':''}">${t.free?'Free':'₹500'}</span></div>`;
+ let html,count;
+ if(listMode==='all'){const nos=[];for(let no=1;no<=TOTAL;no++)if(matches(T[no],no))nos.push(no);count=nos.length;
+  html=nos.length?nos.map(no=>T[no]?soldRow(T[no]):`<div class="li av" data-no="${no}"><div class="n">${no}</div><div class="w"><b>Available</b></div><span class="tag av">Open</span></div>`).join(''):'<div class="empty">No tickets match.</div>';
+  document.getElementById('lcount').textContent=count+' of '+TOTAL;}
+ else{const L=Object.values(T).sort((a,b)=>a.no-b.no).filter(t=>matches(t,t.no));count=L.length;
+  html=filter==='avail'?'<div class="empty">Switch to <b>All 1–100</b> to list available tickets.</div>':L.length?L.map(soldRow).join(''):'<div class="empty">No tickets sold yet.</div>';
+  document.getElementById('lcount').textContent=count+(count===1?' ticket':' tickets');}
+ document.getElementById('list').innerHTML=html;
  const d=document.getElementById('detail');
  if(sel){const t=T[sel];d.hidden=false;d.className='detail '+(t?(t.free?'fr':''):'av');
   d.innerHTML=t?`<div class="no">Ticket ${sel} · ${t.free?'Free (membership offer)':'Paid ₹500'}</div><div class="nm">${esc(t.name)}</div><div class="meta">${esc([t.block&&'Block '+t.block,t.country].filter(Boolean).join(' · '))}${t.date?'<br>Sold '+esc(fd(t.date)):''}</div>`
@@ -243,8 +266,12 @@ document.getElementById('grid').addEventListener('click',e=>{const b=e.target.cl
 document.getElementById('list').addEventListener('click',e=>{const r=e.target.closest('.li');if(!r)return;sel=+r.dataset.no;render();document.getElementById('grid').scrollIntoView({behavior:'smooth',block:'center'})});
 document.getElementById('filters').addEventListener('click',e=>{const c=e.target.closest('.chip');if(!c)return;filter=c.dataset.f;document.querySelectorAll('.chip').forEach(x=>x.classList.toggle('on',x===c));render()});
 document.getElementById('q').oninput=render;
+document.getElementById('lmode').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;listMode=b.dataset.m;ls('pyssDrawList',listMode);render()});
+const line=t=>`${t.no}. ${t.name}${t.block?' ('+t.block+')':''}${t.free?' – Free':''}`;
 document.getElementById('copy').onclick=()=>{const L=Object.values(T).sort((a,b)=>a.no-b.no);const {sold,free,paid}=stats();
- const txt=`PYSS Bumper Draw – ticket holders\n`+(L.length?L.map(t=>`${t.no}. ${t.name}${t.block?' ('+t.block+')':''}${t.free?' – Free':''}`).join('\n'):'No tickets sold yet.')+`\n\nSold ${sold}/${TOTAL} (${paid} paid, ${free} free) · ${TOTAL-sold} available`;
+ let body;if(listMode==='all'){const a=[];for(let no=1;no<=TOTAL;no++)a.push(T[no]?line(T[no]):`${no}. —`);body=a.join('\n')}
+ else body=L.length?L.map(line).join('\n'):'No tickets sold yet.';
+ const txt=`PYSS Bumper Draw – ticket holders\n`+body+`\n\nSold ${sold}/${TOTAL} (${paid} paid, ${free} free) · ${TOTAL-sold} available\n${location.origin+location.pathname}`;
  if(navigator.share&&/Android|iPhone|iPad/i.test(navigator.userAgent)){navigator.share({text:txt}).catch(()=>{});return}
  (navigator.clipboard?navigator.clipboard.writeText(txt):Promise.reject()).then(()=>toast('Copied – paste into WhatsApp')).catch(()=>toast('Copy not allowed here'))};
 function toast(t){const el=document.getElementById('toast');el.textContent=t;el.classList.add('on');setTimeout(()=>el.classList.remove('on'),1800)}
@@ -340,6 +367,54 @@ document.getElementById('detail').addEventListener('click',async e=>{const b=e.t
    if(res.ok){delete T[no];PENDING[no]={op:'cancel',ts:Date.now()};render();toast('Ticket '+no+' is available again');setTimeout(load,4000)}
    else{if(res.error==='bad_pin'){PIN='';ls('pyssDrawPin','')}render();toast(res.error==='script_error'?'Sheet script problem: '+(res.message||''):ERR[res.error]||'Could not cancel')}}
   catch(err){cancelAsk=null;render();toast("Couldn't reach the sheet")}}});
+
+// ---- Share the list as a picture (same look as the app) ----
+function loadImg(src){return new Promise((ok,no)=>{const i=new Image();i.onload=()=>ok(i);i.onerror=no;i.src=src})}
+function rr(x,c,y,w,h,r){x.beginPath();x.moveTo(c+r,y);x.arcTo(c+w,y,c+w,y+h,r);x.arcTo(c+w,y+h,c,y+h,r);x.arcTo(c,y+h,c,y,r);x.arcTo(c,y,c+w,y,r);x.closePath()}
+function fit(x,s,w){if(x.measureText(s).width<=w)return s;while(s.length>1&&x.measureText(s+'…').width>w)s=s.slice(0,-1);return s+'…'}
+async function drawShare(){
+ const SANS='Manrope, system-ui, sans-serif',ML='"Noto Sans Malayalam", Manrope, sans-serif';
+ try{await Promise.all([document.fonts.load('800 40px Manrope'),document.fonts.load('700 30px Manrope'),document.fonts.load('700 30px "Noto Sans Malayalam"')])}catch(e){}
+ const C={bg:'#fbf7ee',ink:'#1b2a5e',mut:'#6b7190',line:'#ece4d2',gold:'#c9a13b',gold2:'#e2bf5c',golds:'#fbf1d6',free:'#2f8a52',frees:'#e7f4ea',av:'#b3a681'};
+ const items=[];if(listMode==='all'){for(let no=1;no<=TOTAL;no++)items.push(T[no]||{no,avail:true})}else Object.values(T).sort((a,b)=>a.no-b.no).forEach(t=>items.push(t));
+ const W=1080,P=56,two=items.length>24,cols=two?2:1,gap=28,colW=(W-2*P-(cols-1)*gap)/cols,RH=two?70:92,rows=Math.ceil(items.length/cols)||1;
+ const HEAD=330,FOOT=130,H=HEAD+rows*RH+(items.length?0:80)+FOOT;
+ const cv=document.createElement('canvas');cv.width=W;cv.height=H;const x=cv.getContext('2d');
+ x.fillStyle=C.bg;x.fillRect(0,0,W,H);
+ // header
+ try{const lg=await loadImg('icons/logo.png');x.fillStyle='#fff';rr(x,P,40,150,165,26);x.fill();x.drawImage(lg,P+12,48,126,126*lg.height/lg.width)}catch(e){}
+ const hx=P+180;x.fillStyle=C.gold;x.font='700 22px '+SANS;x.fillText('P R A V A S I   Y A D A V A   S E V A   S A M I T H I',hx,72);
+ x.fillStyle=C.ink;x.font='800 62px '+SANS;x.fillText('PYSS Bumper Draw',hx,140);
+ x.font='700 30px '+ML;x.fillText('പുതുവത്സര മെമ്പർഷിപ്പ് കാമ്പയിൻ',hx,188);
+ const {sold,free,paid}=stats();
+ const pills=[[`${sold} sold`,C.golds,'#8a6a14'],[`${TOTAL-sold} available`,'#fff',C.ink],[`${free} free`,C.frees,C.free],['₹45,000 prizes','#fff',C.ink]];
+ let px=P;x.font='800 26px '+SANS;for(const [s,bg,fg] of pills){const w=x.measureText(s).width+40;x.fillStyle=bg;rr(x,px,236,w,52,26);x.fill();x.strokeStyle=C.line;x.lineWidth=2;x.stroke();x.fillStyle=fg;x.fillText(s,px+20,271);px+=w+12}
+ // rows
+ const top=HEAD;items.forEach((t,i)=>{const col=two?Math.floor(i/rows):0,r=two?i%rows:i,cx=P+col*(colW+gap),cy=top+r*RH;
+  if(r>0){x.strokeStyle=C.line;x.lineWidth=2;x.beginPath();x.moveTo(cx,cy);x.lineTo(cx+colW,cy);x.stroke()}
+  const bw=two?72:86,bh=RH-18,by=cy+9;
+  if(t.avail){x.fillStyle='#fffdf8';rr(x,cx,by,bw,bh,12);x.fill();x.setLineDash([6,5]);x.strokeStyle='#d8cdb3';x.lineWidth=2;x.stroke();x.setLineDash([])}
+  else{if(t.free)x.fillStyle=C.free;else{const g=x.createLinearGradient(cx,by,cx+bw,by+bh);g.addColorStop(0,C.gold);g.addColorStop(1,C.gold2);x.fillStyle=g}rr(x,cx,by,bw,bh,12);x.fill()}
+  x.fillStyle=t.avail?C.av:'#fff';x.font=`800 ${two?(t.no>99?26:30):(t.no>99?32:36)}px ${SANS}`;x.textAlign='center';x.fillText(String(t.no),cx+bw/2,by+bh/2+(two?11:13));x.textAlign='left';
+  const tx=cx+bw+18,tw=colW-bw-18-(two?0:110);
+  if(t.avail){x.fillStyle=C.av;x.font=`600 ${two?24:28}px ${SANS}`;x.fillText('Available',tx,cy+RH/2+9)}
+  else{const sub=[t.block,t.country].filter(Boolean).join(' · ');x.fillStyle=C.ink;x.font=`700 ${two?24:30}px ${SANS}`;
+   x.fillText(fit(x,t.name+(two&&t.free?'  · Free':''),tw),tx,sub?cy+(two?32:40):cy+RH/2+9);
+   if(sub){x.fillStyle=C.mut;x.font=`500 ${two?19:22}px ${SANS}`;x.fillText(fit(x,sub,tw),tx,cy+(two?56:72))}
+   if(!two){const s=t.free?'Free':'₹500';x.font='800 24px '+SANS;const w=x.measureText(s).width+30;x.fillStyle=t.free?C.frees:C.golds;rr(x,cx+colW-w,cy+RH/2-21,w,42,21);x.fill();x.fillStyle=t.free?C.free:'#8a6a14';x.fillText(s,cx+colW-w+15,cy+RH/2+9)}}});
+ if(!items.length){x.fillStyle=C.mut;x.font='600 30px '+SANS;x.fillText('No tickets sold yet.',P,top+50)}
+ // footer
+ const fy=H-FOOT+20;x.fillStyle=C.ink;rr(x,0,fy+10,W,FOOT-10,0);x.fill();
+ x.fillStyle=C.gold2;x.font='800 28px '+SANS;x.fillText(location.host+location.pathname.replace(/\/$/,''),P,fy+62);
+ const d=new Date();x.fillStyle='#fff';x.font='600 22px '+SANS;x.fillText('As on '+d.getDate()+' '+MON[d.getMonth()]+' '+d.getFullYear(),P,fy+98);
+ return cv}
+document.getElementById('shareImg').onclick=async()=>{const btn=document.getElementById('shareImg');btn.disabled=true;
+ try{const cv=await drawShare();const blob=await new Promise(r=>cv.toBlob(r,'image/png'));
+  const file=new File([blob],'pyss-draw-tickets.png',{type:'image/png'});
+  if(navigator.canShare&&navigator.canShare({files:[file]})){try{await navigator.share({files:[file],text:'PYSS Bumper Draw – '+location.origin+location.pathname})}catch(e){}return}
+  const url=URL.createObjectURL(blob);document.getElementById('ovImg').src=url;document.getElementById('ovDl').href=url;document.getElementById('ov').hidden=false}
+ catch(e){toast('Could not make the picture')}finally{btn.disabled=false}};
+document.getElementById('ovClose').onclick=()=>{document.getElementById('ov').hidden=true};
 
 (()=>{const c=cached();if(c&&c.T)T=c.T})();
 render();load();
