@@ -78,6 +78,33 @@ To change the PIN, edit the `PIN` script property. If you change Code.gs
 later, use **Deploy → Manage deployments → Edit → Version: New version** so
 the URL stays the same.
 
+## WhatsApp reminders (treasurer)
+
+**Send reminders** lists members who haven't taken a ticket yet, with a
+WhatsApp button for each. Tapping it opens that member's chat in *your*
+WhatsApp with the message typed in; you tap **Send**. The member is then
+marked as reminded (shared between treasurer phones).
+
+Phone numbers are kept in a **separate, private** Google Sheet, never in the
+public PYSS sheet, and the app only receives them after the PIN.
+
+1. Create a new Google Sheet (e.g. "PYSS Contacts") and keep its sharing
+   **Restricted**. Import `sheet-template/Contacts.csv` (all members' S/N and
+   names) or type the headings **S/N** and **WhatsApp** in row 1.
+2. Fill in **WhatsApp** numbers with the country code, e.g. `971501234567`
+   (spaces, `+` or a leading `00` are fine).
+3. Copy the sheet's ID (between `/d/` and `/edit` in its address).
+4. In Apps Script: **Project Settings → Script Properties → Add script
+   property** `CONTACTS_SHEET_ID` = that ID.
+5. Paste the latest `apps-script/Code.gs`, then **Deploy → Manage
+   deployments → Edit → Version: New version → Deploy**, and allow access
+   if asked.
+6. Open the web app link: it should show `"contacts":"N numbers"`.
+
+The message can be edited on the reminders screen; `{name}`, `{left}`
+(tickets left) and `{link}` (app link) are filled in for each member.
+A **Reminded** column is added to the contacts sheet automatically.
+
 ## Installing on a phone
 
 - **Android (Chrome):** tap **Install app** on the page, or **⋮ → Install
@@ -89,4 +116,5 @@ the URL stays the same.
 - `index.html` – the app (includes the member list used to look up S/N)
 - `manifest.webmanifest`, `sw.js`, `icons/` – installable app and offline use
 - `sheet-template/Tickets.csv` – headings for the Tickets tab
-- `apps-script/Code.gs` – the sheet script that saves sales made in the app
+- `apps-script/Code.gs` – the sheet script that saves sales made in the app and reads reminder numbers
+- `sheet-template/Contacts.csv` – start of the private contacts sheet (S/N, name, block, country, WhatsApp)

@@ -42,6 +42,67 @@ function columnFields(head) {
   });
 }
 
+// ---- WhatsApp reminders: members' numbers live in a separate PRIVATE sheet ----
+// Script Properties → CONTACTS_SHEET_ID = the ID of that sheet (keep its sharing Restricted).
+// Its first tab needs an S/N column and a WhatsApp number column (with country code).
+const CONTACT_HEADINGS = {
+  sn: ['sn', 'sno', 'serial', 'serialno', 'membersn'],
+  phone: ['whatsapp', 'whatsappnumber', 'whatsappno', 'phone', 'phonenumber', 'phoneno', 'mobile', 'mobileno', 'mobilenumber', 'number'],
+  reminded: ['reminded', 'remindedon', 'lastreminded']
+};
+
+function contactsSheet() {
+  const id = PropertiesService.getScriptProperties().getProperty('CONTACTS_SHEET_ID');
+  if (!id) return null;
+  return SpreadsheetApp.openById(id.trim()).getSheets()[0];
+}
+
+function contactCols(sh) {
+  const head = sh.getRange(1, 1, 1, Math.max(1, sh.getLastColumn())).getValues()[0]
+    .map(h => String(h).toLowerCase().replace(/[^a-z]/g, ''));
+  const c = {};
+  for (const f in CONTACT_HEADINGS) c[f] = head.findIndex(h => CONTACT_HEADINGS[f].indexOf(h) >= 0);
+  c.width = head.length;
+  return c;
+}
+
+function ymd(v) {
+  if (v instanceof Date) return Utilities.formatDate(v, Session.getScriptTimeZone(), 'yyyy-MM-dd');
+  return String(v || '').trim();
+}
+
+// S/N -> { phone (digits only, with country code), reminded (date or '') }
+function readContacts() {
+  const sh = contactsSheet();
+  if (!sh) return { error: 'no_contacts' };
+  const c = contactCols(sh);
+  if (c.sn < 0 || c.phone < 0) return { error: 'contacts_columns' };
+  const rows = sh.getDataRange().getValues();
+  const list = {};
+  for (let r = 1; r < rows.length; r++) {
+    const sn = Math.round(Number(rows[r][c.sn]));
+    let phone = String(rows[r][c.phone] || '').replace(/[^0-9]/g, '').replace(/^00/, '');
+    if (!(sn > 0) || !phone) continue;
+    list[sn] = { phone: phone, reminded: c.reminded >= 0 ? ymd(rows[r][c.reminded]) : '' };
+  }
+  return { list: list };
+}
+
+// Records today's date in the Reminded column for one member (adds the column if missing).
+function markReminded(sn, date) {
+  const sh = contactsSheet();
+  if (!sh) return { error: 'no_contacts' };
+  const c = contactCols(sh);
+  if (c.sn < 0) return { error: 'contacts_columns' };
+  let col = c.reminded;
+  if (col < 0) { col = c.width; sh.getRange(1, col + 1).setValue('Reminded'); }
+  const rows = sh.getDataRange().getValues();
+  for (let r = 1; r < rows.length; r++) {
+    if (Math.round(Number(rows[r][c.sn])) === sn) { sh.getRange(r + 1, col + 1).setValue(date); return { ok: true }; }
+  }
+  return { error: 'not_found' };
+}
+
 function book() {
   return SpreadsheetApp.getActiveSpreadsheet() || SpreadsheetApp.openById(SHEET_ID);
 }
@@ -62,6 +123,12 @@ function doGet() {
     }
   } catch (err) {
     r.sheetError = String(err && err.message || err);
+  }
+  try {
+    const ct = readContacts();
+    r.contacts = ct.error ? ct.error : Object.keys(ct.list).length + ' numbers';
+  } catch (err) {
+    r.contacts = 'error: ' + String(err && err.message || err);
   }
   r.ready = !!(r.pinSet && r.ticketsTab && r.ticketNoColumn);
   return out(r);
@@ -95,6 +162,16 @@ function handle(e) {
     }
 
     if (d.action === 'check') return out({ ok: true });
+
+    if (d.action === 'contacts') {
+      const ct = readContacts();
+      return out(ct.error ? { ok: false, error: ct.error } : { ok: true, contacts: ct.list });
+    }
+    if (d.action === 'mark') {
+      const date = /^\d{4}-\d{2}-\d{2}$/.test(String(d.date || '')) ? String(d.date) : ymd(new Date());
+      const m = markReminded(Math.round(Number(d.sn)), date);
+      return out(m.error ? { ok: false, error: m.error } : { ok: true });
+    }
 
     const sh = book().getSheetByName(TAB);
     if (!sh) return out({ ok: false, error: 'no_tab' });
