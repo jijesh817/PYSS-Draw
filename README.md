@@ -78,6 +78,25 @@ To change the PIN, edit the `PIN` script property. If you change Code.gs
 later, use **Deploy → Manage deployments → Edit → Version: New version** so
 the URL stays the same.
 
+## Owner and admins
+
+Three levels, set in **Apps Script → Project Settings → Script Properties**:
+
+| Property | Value | Who |
+|---|---|---|
+| `OWNER_PIN` | your PIN | **Owner** – sell, cancel any sale, reminders, record dues payments |
+| `OWNER_NAME` | your name (optional) | shown in the **By** column for your actions |
+| `ADMIN_PINS` | `Ravi:483920, Suresh:771204` | **Admins** – sell, cancel only their own sales, reminders, record dues payments |
+
+Everyone else just opens the link and views. Every sale and payment records
+who made it in a **By** column (added automatically). To remove an admin,
+delete their `Name:PIN` from `ADMIN_PINS`; nothing else changes. PIN
+changes take effect immediately, with no redeploy.
+
+The older single `PIN` property keeps working as the owner PIN until
+`OWNER_PIN` is set; delete it afterwards. The app shows "Signed in as …
+Owner/Admin" with a **Sign out** link.
+
 ## WhatsApp reminders (treasurer)
 
 **Send reminders** lists members who haven't taken a ticket yet, with a

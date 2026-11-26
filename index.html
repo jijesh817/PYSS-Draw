@@ -123,6 +123,11 @@ input[type=search]{width:100%;padding:10px 12px;border-radius:10px;border:1px so
 .rrow .ok{color:var(--free);font-weight:700}
 .wa{display:inline-flex;align-items:center;gap:6px;background:#25d366;color:#fff;text-decoration:none;font:800 13px var(--sans);border-radius:999px;padding:8px 14px;white-space:nowrap}
 .rrow.done .wa{background:#e7f4ea;color:var(--free)}
+.whobar{font-size:13px;color:var(--mut);display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.whobar b{color:var(--ink)}
+.role{font-size:11px;font-weight:800;border-radius:999px;padding:2px 8px;background:var(--golds);color:#8a6a14}
+.role.owner{background:var(--ink);color:#fff}
+.linkbtn{border:0;background:none;color:var(--ink);font:700 13px var(--sans);text-decoration:underline;cursor:pointer;padding:0}
 .toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:#fff;padding:8px 14px;border-radius:999px;font-size:13px;opacity:0;transition:opacity .2s;pointer-events:none}
 .toast.on{opacity:1}
 button:focus-visible,input:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
@@ -144,6 +149,7 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--ink);outline-of
  </header>
 
  <div class="top"><div class="status" id="st">Loading tickets…</div><button class="ibtn" id="refresh">Refresh</button><button class="ibtn" id="sellBtn" hidden>Sell a ticket</button><button class="ibtn" id="remBtn" hidden>Send reminders</button><button class="ibtn solid" id="install" hidden>Install app</button></div>
+ <div class="whobar" id="whoBar" hidden></div>
  <div class="iosTip" id="iosTip" hidden>To install on iPhone: tap <b>Share</b>, then <b>Add to Home Screen</b>.</div>
 
  <div class="kpis">
@@ -227,7 +233,7 @@ function parseMembers(text){const j=gviz(text),cs=cols(j),iS=find(cs,['sn','sno'
  const B={};j.table.rows.forEach(r=>{const c=r.c||[],sn=Math.round(cNum(c[iS])),b=cText(c[iB]);if(MEM[sn]&&b)B[sn]=b.slice(0,40)});return B}
 function parseTickets(text,B){const j=gviz(text),cs=cols(j);
  const iT=find(cs,['ticketno','ticket','ticketnumber','no','tno']),iS=find(cs,['sn','sno','serial','serialno','membersn']),iN=find(cs,['name','buyer','buyername','holder']),
-  iB=find(cs,['block']),iC=find(cs,['country']),iY=find(cs,['type','freepaid','paidfree','free','payment']),iD=find(cs,['date','saledate','datesold','solddate']);
+  iB=find(cs,['block']),iC=find(cs,['country']),iY=find(cs,['type','freepaid','paidfree','free','payment']),iD=find(cs,['date','saledate','datesold','solddate']),iW=find(cs,['by','soldby','addedby','recordedby','enteredby']);
  if(iT<0)throw new Error('columns');
  const out={},bad=[],dup=[];
  j.table.rows.forEach((r,n)=>{const c=r.c||[],no=Math.round(cNum(c[iT]));const row=n+2;
@@ -239,7 +245,7 @@ function parseTickets(text,B){const j=gviz(text),cs=cols(j);
   out[no]={no,name:name.slice(0,60),sn:m?sn:null,
    block:((iB>=0&&cText(c[iB]))||(m?(B[sn]||m[1]):'')).slice(0,40),
    country:((iC>=0&&cText(c[iC]))||(m?m[2]:'')).slice(0,40),
-   free:iY>=0&&/free|comp|സൗജന്യ/i.test(cText(c[iY])),date:iD>=0?cDate(c[iD]):''}});
+   free:iY>=0&&/free|comp|സൗജന്യ/i.test(cText(c[iY])),date:iD>=0?cDate(c[iD]):'',by:iW>=0?cText(c[iW]).slice(0,40):''}});
  return {out,bad,dup}}
 
 // ---- Render ----
@@ -266,10 +272,10 @@ function render(){const {sold,free,paid}=stats();
  document.getElementById('list').innerHTML=html;
  const d=document.getElementById('detail');
  if(sel){const t=T[sel];d.hidden=false;d.className='detail '+(t?(t.free?'fr':''):'av');
-  d.innerHTML=t?`<div class="no">Ticket ${sel} · ${t.free?'Free (membership offer)':'Paid ₹500'}</div><div class="nm">${esc(t.name)}</div><div class="meta">${esc([t.block&&'Block '+t.block,t.country].filter(Boolean).join(' · '))}${t.date?'<br>Sold '+esc(fd(t.date)):''}</div>`
+  d.innerHTML=t?`<div class="no">Ticket ${sel} · ${t.free?'Free (membership offer)':'Paid ₹500'}</div><div class="nm">${esc(t.name)}</div><div class="meta">${esc([t.block&&'Block '+t.block,t.country].filter(Boolean).join(' · '))}${t.date?'<br>Sold '+esc(fd(t.date)):''}${t.by?(t.date?' by ':'<br>Sold by ')+esc(t.by):''}</div>`
    :`<div class="no">Ticket ${sel}</div><div class="nm">Available</div><div class="meta">This ticket hasn't been sold yet.</div>`;
   if(canSell()){const a=document.createElement('div');a.className='dact';
-   a.innerHTML=t?(cancelAsk===sel?`<button class="ibtn danger" data-cancel="${sel}">Yes, cancel ticket ${sel}</button><button class="ibtn" data-cancelno>Keep it</button>`:`<button class="ibtn danger" data-askcancel="${sel}">Cancel this sale</button>`):`<button class="ibtn solid" data-sell="${sel}">Sell ticket ${sel}</button>`;
+   a.innerHTML=t?(!canCancel(t)?`<span class="meta">Only ${t.by?esc(t.by)+' (who sold it) or ':''}the owner can cancel this sale.</span>`:cancelAsk===sel?`<button class="ibtn danger" data-cancel="${sel}">Yes, cancel ticket ${sel}</button><button class="ibtn" data-cancelno>Keep it</button>`:`<button class="ibtn danger" data-askcancel="${sel}">Cancel this sale</button>`):`<button class="ibtn solid" data-sell="${sel}">Sell ticket ${sel}</button>`;
    d.appendChild(a)}}else d.hidden=true}
 document.getElementById('grid').addEventListener('click',e=>{const b=e.target.closest('.tk');if(!b)return;const no=+b.dataset.no;sel=sel===no?null:no;render()});
 document.getElementById('list').addEventListener('click',e=>{const r=e.target.closest('.li');if(!r)return;sel=+r.dataset.no;render();document.getElementById('grid').scrollIntoView({behavior:'smooth',block:'center'})});
@@ -316,7 +322,20 @@ if('serviceWorker' in navigator&&location.protocol==='https:')navigator.serviceW
 // ---- Selling tickets (treasurer only, PIN checked by the sheet's Apps Script) ----
 const sellOn=APPS_SCRIPT_URL&&!APPS_SCRIPT_URL.startsWith('__');
 let PIN=ls('pyssDrawPin')||'',sale=null,cancelAsk=null;
+// Who the PIN belongs to, as told by the sheet script: {role:'owner'|'admin', name}
+let WHO=(()=>{try{return JSON.parse(ls('pyssDrawWho')||'null')}catch(e){return null}})();
 function canSell(){return sellOn&&!!PIN}
+function canCancel(t){if(!WHO)return true;                    // unknown yet: the script decides
+ return WHO.role==='owner'||(!!t.by&&t.by===WHO.name)}
+function setWho(w){WHO=w;ls('pyssDrawWho',w?JSON.stringify(w):'');drawWho()}
+function signOut(){PIN='';ls('pyssDrawPin','');setWho(null);render()}
+function drawWho(){const el=document.getElementById('whoBar');if(!el)return;
+ if(!sellOn||!PIN){el.hidden=true;return}
+ el.hidden=false;el.innerHTML=`Signed in${WHO&&WHO.name?' as <b>'+esc(WHO.name)+'</b>':''}${WHO?` <span class="role ${WHO.role}">${WHO.role==='owner'?'Owner':'Admin'}</span>`:''} <button type="button" class="linkbtn" id="signOut">Sign out</button>`;
+ document.getElementById('signOut').onclick=signOut}
+async function checkWho(pin){try{const r=await callScript({action:'check',pin:pin||PIN});
+  if(r.ok)setWho({role:r.role||'owner',name:r.name||''});   // older script: no role, full access as before
+  else if(r.error==='bad_pin')signOut()}catch(e){}}
 document.getElementById('memList').innerHTML=Object.entries(MEM).sort((a,b)=>a[1][0].localeCompare(b[1][0])).map(([sn,m])=>`<option value="${esc(m[0])} · S/N ${sn}">${esc(m[1])} · ${esc(m[2])}</option>`).join('');
 const sellBtn=document.getElementById('sellBtn');sellBtn.hidden=!sellOn;
 sellBtn.onclick=()=>openSale(sel&&!T[sel]?sel:null);
@@ -346,13 +365,13 @@ saleEl.addEventListener('input',e=>{if(e.target.id!=='sBuyer')return;const had=!
 saleEl.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;
  if(b.dataset.type){readSale();sale.type=b.dataset.type;drawSale()}
  else if('close' in b.dataset){sale=null;drawSale()}
- else if('logout' in b.dataset){PIN='';ls('pyssDrawPin','');readSale();drawSale();render()}});
+ else if('logout' in b.dataset){readSale();signOut();drawSale()}});
 async function callScript(payload){let r;try{r=await fetch(APPS_SCRIPT_URL,{method:'POST',body:JSON.stringify(payload)})}catch(e){throw new Error('network')}
  const text=await r.text();try{return JSON.parse(text)}catch(e){
   // Google answered with a page instead of data: show its message so the setup problem can be fixed
   const msg=text.replace(/<style[\s\S]*?<\/style>|<script[\s\S]*?<\/script>/gi,' ').replace(/<[^>]+>/g,' ').replace(/&[a-z#0-9]+;/gi,' ').replace(/\s+/g,' ').trim().slice(0,160);
   return {ok:false,error:'script_error',message:msg||('HTTP '+r.status)}}}
-const ERR={busy:'Another sale is being saved. Try again in a moment.',bad_pin:'That PIN is wrong.',locked:'Too many wrong PINs. Try again in 10 minutes.',taken:'That ticket is already sold. Pick another number.',bad_ticket:'Ticket number must be 1 to '+TOTAL+'.',no_tab:'The sheet has no Tickets tab.',no_column:'The Tickets tab needs a "Ticket No" heading in row 1.',no_name:"Enter the buyer's name.",no_pin_set:'No PIN is set in the Apps Script yet (Project Settings → Script Properties → PIN).',not_sold:'That ticket is not sold.'};
+const ERR={not_yours:'Only the admin who sold this ticket, or the owner, can cancel it.',busy:'Another sale is being saved. Try again in a moment.',bad_pin:'That PIN is wrong.',locked:'Too many wrong PINs. Try again in 10 minutes.',taken:'That ticket is already sold. Pick another number.',bad_ticket:'Ticket number must be 1 to '+TOTAL+'.',no_tab:'The sheet has no Tickets tab.',no_column:'The Tickets tab needs a "Ticket No" heading in row 1.',no_name:"Enter the buyer's name.",no_pin_set:'No PIN is set in the Apps Script yet (Project Settings → Script Properties → PIN).',not_sold:'That ticket is not sold.'};
 saleEl.addEventListener('submit',async e=>{e.preventDefault();if(sale.busy)return;readSale();
  const no=Math.round(+sale.no),sn=buyerSn(sale.buyer),pin=PIN||sale.pin||'';
  if(!pin){sale.err='Enter the treasurer PIN.';drawSale();return}
@@ -362,9 +381,9 @@ saleEl.addEventListener('submit',async e=>{e.preventDefault();if(sale.busy)retur
  sale.busy=true;sale.err='';drawSale();
  const body={action:'sell',pin,ticket:no,sn:sn||'',memberName:sn?MEM[sn][0]:'',name:sn?'':sale.buyer.trim(),block:sn?'':sale.block.trim(),country:sn?'':sale.country.trim(),type:sale.type,date:sale.date};
  try{const res=await callScript(body);
-  if(!res.ok){sale.busy=false;sale.err=res.error==='script_error'?'The sheet script reported a problem: '+(res.message||'unknown')+'. Open the script link in a browser to check its setup.':ERR[res.error]||'The sheet refused the sale ('+res.error+').';if(res.error==='bad_pin'){PIN='';ls('pyssDrawPin','')}drawSale();return}
-  PIN=pin;ls('pyssDrawPin',pin);
-  const m=sn?MEM[sn]:null;T[no]={no,name:m?m[0]:body.name,sn:sn||null,block:m?m[1]:body.block,country:m?m[2]:body.country,free:sale.type==='Free',date:sale.date};
+  if(!res.ok){sale.busy=false;sale.err=res.error==='script_error'?'The sheet script reported a problem: '+(res.message||'unknown')+'. Open the script link in a browser to check its setup.':ERR[res.error]||'The sheet refused the sale ('+res.error+').';if(res.error==='bad_pin'){signOut()}drawSale();return}
+  PIN=pin;ls('pyssDrawPin',pin);if(!WHO)checkWho(pin);else drawWho();
+  const m=sn?MEM[sn]:null;T[no]={no,name:m?m[0]:body.name,sn:sn||null,block:m?m[1]:body.block,country:m?m[2]:body.country,free:sale.type==='Free',date:sale.date,by:res.by||(WHO&&WHO.name)||''};
   PENDING[no]={op:'sell',t:T[no],ts:Date.now()};sel=no;sale=null;drawSale();render();toast('Ticket '+no+' saved');setTimeout(load,4000)}
  catch(err){sale.busy=false;sale.err=navigator.onLine===false?"You're offline. Connect to the internet and try again.":"Couldn't reach the sheet script. Open the script link in a browser: if it doesn't show the PYSS check, the deployment's access must be set to Anyone.";drawSale()}});
 document.getElementById('detail').addEventListener('click',async e=>{const b=e.target.closest('button');if(!b)return;
@@ -374,7 +393,7 @@ document.getElementById('detail').addEventListener('click',async e=>{const b=e.t
  else if(b.dataset.cancel){const no=+b.dataset.cancel;b.disabled=true;
   try{const res=await callScript({action:'cancel',pin:PIN,ticket:no});cancelAsk=null;
    if(res.ok){delete T[no];PENDING[no]={op:'cancel',ts:Date.now()};render();toast('Ticket '+no+' is available again');setTimeout(load,4000)}
-   else{if(res.error==='bad_pin'){PIN='';ls('pyssDrawPin','')}render();toast(res.error==='script_error'?'Sheet script problem: '+(res.message||''):ERR[res.error]||'Could not cancel')}}
+   else{if(res.error==='bad_pin'){signOut()}render();toast(res.error==='script_error'?'Sheet script problem: '+(res.message||''):ERR[res.error]||'Could not cancel')}}
   catch(err){cancelAsk=null;render();toast("Couldn't reach the sheet")}}});
 
 
@@ -389,8 +408,8 @@ const REM_ERR={no_contacts:'The script has no CONTACTS_SHEET_ID yet. Add it in A
 remBtn.onclick=()=>{if(!REMINDERS_ON)return;if(!REM)REM={contacts:null,all:false,err:'',busy:false};remSec.hidden=false;drawRem();if(PIN&&!REM.contacts)loadContacts();remSec.scrollIntoView({behavior:'smooth',block:'start'})};
 async function loadContacts(pin){REM.busy=true;REM.err='';drawRem();
  try{const res=await callScript({action:'contacts',pin:pin||PIN});REM.busy=false;
-  if(!res.ok){if(res.error==='bad_pin'){PIN='';ls('pyssDrawPin','')}REM.err=res.error==='script_error'?'Sheet script problem: '+(res.message||''):REM_ERR[res.error]||('Could not load numbers ('+res.error+').');drawRem();return}
-  if(pin){PIN=pin;ls('pyssDrawPin',pin)}REM.contacts=res.contacts||{};drawRem()}
+  if(!res.ok){if(res.error==='bad_pin'){signOut()}REM.err=res.error==='script_error'?'Sheet script problem: '+(res.message||''):REM_ERR[res.error]||('Could not load numbers ('+res.error+').');drawRem();return}
+  if(pin){PIN=pin;ls('pyssDrawPin',pin);if(!WHO)checkWho(pin);else drawWho()}REM.contacts=res.contacts||{};drawRem()}
  catch(e){REM.busy=false;REM.err="Couldn't reach the sheet script. Check your connection and try again.";drawRem()}}
 function waLink(sn,c){const left=TOTAL-Object.keys(T).length;
  const txt=remMsg().replace(/\{name\}/g,titleName(MEM[sn][0])).replace(/\{left\}/g,left).replace(/\{link\}/g,location.origin+location.pathname);
@@ -428,6 +447,7 @@ remSec.addEventListener('click',e=>{const b=e.target.closest('[data-rclose],[dat
   setTimeout(drawRem,300);callScript({action:'mark',pin:PIN,sn,date:d}).catch(()=>{})}});
 
 (()=>{const c=cached();if(c&&c.T)T=c.T})();
+drawWho();if(sellOn&&PIN&&!WHO)checkWho();
 render();load();
 </script>
 </body>

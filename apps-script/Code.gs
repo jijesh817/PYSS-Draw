@@ -3,8 +3,13 @@
  *
  * Setup (once): see README.md, "Selling tickets from the app".
  *  1. In the PYSS Google Sheet: Extensions → Apps Script. Replace the code with this file.
- *  2. Project Settings (gear) → Script Properties → Add property:
- *       Property: PIN    Value: a number only the treasurer knows (e.g. 6 digits)
+ *  2. Project Settings (gear) → Script Properties → add:
+ *       OWNER_PIN   your own PIN (owner: can do everything, cancel any sale)
+ *       OWNER_NAME  optional, your name as shown in the "By" column (default "Owner")
+ *       ADMIN_PINS  one entry per admin, "Name:PIN" separated by commas,
+ *                   e.g.  Ravi:483920, Suresh:771204
+ *                   (admins sell, record payments, send reminders, cancel only their own sales)
+ *     An older single PIN property still works as the owner PIN until OWNER_PIN is set.
  *  3. Deploy → New deployment → type "Web app".
  *       Execute as: Me      Who has access: Anyone
  *     Authorise it, then copy the Web app URL into APPS_SCRIPT_URL in index.html.
@@ -28,18 +33,64 @@ const HEADINGS = {
   block: ['block'],
   country: ['country'],
   type: ['type', 'freepaid', 'paidfree', 'free', 'payment'],
-  date: ['date', 'saledate', 'datesold', 'solddate']
+  date: ['date', 'saledate', 'datesold', 'solddate'],
+  by: ['by', 'soldby', 'addedby', 'recordedby', 'enteredby']
 };
 
-// Which field each column holds ('' for columns the app doesn't use); first match per field wins.
-function columnFields(head) {
+// Payments tab (dues app): Date | S/N | Name | Amount | Note | By
+const PAY_TAB = 'Payments';
+const PAY_HEADINGS = {
+  date: ['date', 'datepaid', 'paidon'],
+  sn: ['sn', 'sno', 'serial', 'serialno'],
+  name: ['name', 'membername'],
+  amount: ['amount', 'amountpaid', 'paid'],
+  note: ['note', 'notes', 'remarks', 'remark'],
+  by: ['by', 'recordedby', 'enteredby', 'addedby']
+};
+
+// Who a PIN belongs to: {role: 'owner' | 'admin', name} or null.
+function whoIs(pin) {
+  const p = PropertiesService.getScriptProperties();
+  pin = String(pin || '').trim();
+  if (!pin) return null;
+  const ownerPin = String(p.getProperty('OWNER_PIN') || p.getProperty('PIN') || '').trim();
+  if (ownerPin && pin === ownerPin) return { role: 'owner', name: clean(p.getProperty('OWNER_NAME')) || 'Owner' };
+  const admins = String(p.getProperty('ADMIN_PINS') || '').split(/[,;\n]/);
+  for (let i = 0; i < admins.length; i++) {
+    const a = admins[i], k = a.lastIndexOf(':');
+    if (k < 1) continue;
+    const name = clean(a.slice(0, k)), apin = a.slice(k + 1).trim();
+    if (apin && pin === apin) return { role: 'admin', name: name || 'Admin' };
+  }
+  return null;
+}
+
+function anyPinSet() {
+  const p = PropertiesService.getScriptProperties();
+  return !!(p.getProperty('OWNER_PIN') || p.getProperty('PIN') || String(p.getProperty('ADMIN_PINS') || '').indexOf(':') > 0);
+}
+
+// Column -> field map for a heading row, using the given heading table.
+function fieldsFor(head, table) {
   const used = {};
   return head.map(h => {
-    for (const f in HEADINGS) {
-      if (!used[f] && HEADINGS[f].indexOf(h) >= 0) { used[f] = true; return f; }
+    for (const f in table) {
+      if (!used[f] && table[f].indexOf(h) >= 0) { used[f] = true; return f; }
     }
     return '';
   });
+}
+
+// Make sure the tab has a "By" column; returns the updated column map.
+function ensureBy(sh, head, cols) {
+  if (cols.indexOf('by') >= 0) return cols;
+  sh.getRange(1, head.length + 1).setValue('By');
+  return cols.concat(['by']);
+}
+
+// Which field each column holds ('' for columns the app doesn't use); first match per field wins.
+function columnFields(head) {
+  return fieldsFor(head, HEADINGS);
 }
 
 // ---- WhatsApp reminders: members' numbers live in a separate PRIVATE sheet ----
@@ -110,7 +161,13 @@ function book() {
 // Opening the web app link in a browser shows this check, so setup problems are easy to spot.
 // It reveals nothing private: only whether each part is in place.
 function doGet() {
-  const r = { app: 'PYSS Bumper Draw', pinSet: !!PropertiesService.getScriptProperties().getProperty('PIN') };
+  const p = PropertiesService.getScriptProperties();
+  const r = {
+    app: 'PYSS Bumper Draw',
+    pinSet: anyPinSet(),
+    ownerPin: !!(p.getProperty('OWNER_PIN') || p.getProperty('PIN')),
+    admins: String(p.getProperty('ADMIN_PINS') || '').split(/[,;\n]/).filter(a => a.indexOf(':') > 0).length
+  };
   try {
     const ss = book();
     r.sheet = ss.getName();
@@ -150,18 +207,20 @@ function handle(e) {
     try { d = JSON.parse((e && e.postData && e.postData.contents) || '{}'); }
     catch (err) { return out({ ok: false, error: 'bad_request' }); }
 
-    const pin = PropertiesService.getScriptProperties().getProperty('PIN');
-    if (!pin) return out({ ok: false, error: 'no_pin_set' });
+    if (!anyPinSet()) return out({ ok: false, error: 'no_pin_set' });
 
     const cache = CacheService.getScriptCache();
     const bad = Number(cache.get('badPins') || 0);
     if (bad >= MAX_BAD_PINS) return out({ ok: false, error: 'locked' });
-    if (String(d.pin || '') !== String(pin)) {
+    const who = whoIs(d.pin);
+    if (!who) {
       cache.put('badPins', String(bad + 1), 600);
       return out({ ok: false, error: 'bad_pin' });
     }
 
-    if (d.action === 'check') return out({ ok: true });
+    if (d.action === 'check') return out({ ok: true, role: who.role, name: who.name });
+
+    if (d.action === 'pay') return out(recordPayment(d, who));
 
     if (d.action === 'contacts') {
       const ct = readContacts();
@@ -185,8 +244,15 @@ function handle(e) {
     if (!(no >= 1 && no <= TOTAL)) return out({ ok: false, error: 'bad_ticket' });
 
     if (d.action === 'cancel') {
+      const iBy = cols.indexOf('by');
       for (let r = values.length - 1; r >= 1; r--) {
-        if (Math.round(Number(values[r][iT])) === no) { sh.deleteRow(r + 1); return out({ ok: true, ticket: no }); }
+        if (Math.round(Number(values[r][iT])) !== no) continue;
+        // Admins may only cancel sales they made themselves; the owner may cancel any.
+        if (who.role !== 'owner' && (iBy < 0 || String(values[r][iBy]).trim() !== who.name)) {
+          return out({ ok: false, error: 'not_yours' });
+        }
+        sh.deleteRow(r + 1);
+        return out({ ok: true, ticket: no });
       }
       return out({ ok: false, error: 'not_sold' });
     }
@@ -208,13 +274,33 @@ function handle(e) {
       block: sn > 0 ? '' : block,
       country: sn > 0 ? '' : country,
       type: d.type === 'Free' ? 'Free' : 'Paid',
-      date: date
+      date: date,
+      by: who.name
     };
-    sh.appendRow(cols.map(f => (f ? fields[f] : '')));
-    return out({ ok: true, ticket: no });
+    const cols2 = ensureBy(sh, head, cols);
+    sh.appendRow(cols2.map(f => (f ? fields[f] : '')));
+    return out({ ok: true, ticket: no, by: who.name });
   } finally {
     lock.releaseLock();
   }
+}
+
+// Dues app: add one payment row to the Payments tab.
+function recordPayment(d, who) {
+  const sh = book().getSheetByName(PAY_TAB);
+  if (!sh) return { ok: false, error: 'no_pay_tab' };
+  const head = sh.getRange(1, 1, 1, Math.max(1, sh.getLastColumn())).getValues()[0]
+    .map(h => String(h).toLowerCase().replace(/[^a-z]/g, ''));
+  let cols = fieldsFor(head, PAY_HEADINGS);
+  if (cols.indexOf('sn') < 0 || cols.indexOf('amount') < 0) return { ok: false, error: 'pay_columns' };
+  const sn = Math.round(Number(d.sn)), amount = Math.round(Number(d.amount));
+  if (!(sn > 0)) return { ok: false, error: 'bad_member' };
+  if (!(amount > 0 && amount <= 1000000)) return { ok: false, error: 'bad_amount' };
+  const date = /^\d{4}-\d{2}-\d{2}$/.test(String(d.date || '')) ? String(d.date) : ymd(new Date());
+  cols = ensureBy(sh, head, cols);
+  const fields = { date: date, sn: sn, name: clean(d.name), amount: amount, note: clean(d.note), by: who.name };
+  sh.appendRow(cols.map(f => (f ? fields[f] : '')));
+  return { ok: true, by: who.name };
 }
 
 // Plain text only, short, and never starting like a formula.
