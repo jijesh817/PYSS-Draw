@@ -129,6 +129,7 @@ input[type=search]{width:100%;padding:10px 12px;border-radius:10px;border:1px so
 .role.owner{background:var(--ink);color:#fff}
 .linkbtn{border:0;background:none;color:var(--ink);font:700 13px var(--sans);text-decoration:underline;cursor:pointer;padding:0}
 .cat{display:inline-block;font:700 11px var(--sans)!important;color:#fff!important;background:var(--cc,#7c3aed);border-radius:6px;padding:1px 6px;margin-left:5px;vertical-align:2px;white-space:nowrap}
+.siform{display:flex;gap:6px;align-items:center;flex-wrap:wrap}.siform input{font:15px var(--sans);padding:7px 10px;border:1px solid var(--line);border-radius:9px;width:140px}
 .toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:#fff;padding:8px 14px;border-radius:999px;font-size:13px;opacity:0;transition:opacity .2s;pointer-events:none}
 .toast.on{opacity:1}
 button:focus-visible,input:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
@@ -236,13 +237,11 @@ function cDate(c){if(!c||c.v==null)return '';const v=c.v;if(typeof v==='string')
  m=/^(\d{4})-(\d{1,2})-(\d{1,2})/.exec(v);if(m)return m[1]+'-'+p2(+m[2])+'-'+p2(+m[3]);
  m=/^(\d{1,2})[\/.\-](\d{1,2})[\/.\-](\d{4})$/.exec(v.trim());if(m)return m[3]+'-'+p2(+m[2])+'-'+p2(+m[1]);return v.trim()}return c.f||String(v)}
 function find(cs,names){return cs.findIndex(c=>c&&names.includes(c))}
-// Members tab: S/N plus optional Block and Role/Category ("Admin, Former admin 2024–2026")
-function parseMembers(text){const j=gviz(text),cs=cols(j),iS=find(cs,['sn','sno','serial','serialno']),iB=find(cs,['block']),
-  iR=find(cs,['role','roles','category','categories','group','groups','tag','tags','position']);
- CATS={};if(iS<0||(iB<0&&iR<0))return {};
- const B={};j.table.rows.forEach(r=>{const c=r.c||[],sn=Math.round(cNum(c[iS]));if(!MEM[sn])return;
-  const b=iB>=0?cText(c[iB]):'';if(b)B[sn]=b.slice(0,40);
-  const rs=iR>=0?cText(c[iR]).split(/[,;\n]/).map(x=>x.trim().slice(0,30)).filter(Boolean).slice(0,4):[];if(rs.length)CATS[sn]=rs});
+// Public Members tab: S/N plus optional Block. (Categories are admin-only and come from the
+// private contacts sheet through the sheet script, after an owner/admin PIN.)
+function parseMembers(text){const j=gviz(text),cs=cols(j),iS=find(cs,['sn','sno','serial','serialno']),iB=find(cs,['block']);
+ if(iS<0||iB<0)return {};
+ const B={};j.table.rows.forEach(r=>{const c=r.c||[],sn=Math.round(cNum(c[iS])),b=cText(c[iB]);if(MEM[sn]&&b)B[sn]=b.slice(0,40)});
  return B}
 function parseTickets(text,B){const j=gviz(text),cs=cols(j);
  const iT=find(cs,['ticketno','ticket','ticketnumber','no','tno']),iS=find(cs,['sn','sno','serial','serialno','membersn']),iN=find(cs,['name','buyer','buyername','holder']),
@@ -312,8 +311,8 @@ async function load(){
  if(!SHEET_ID||SHEET_ID.startsWith('__')){status('Ticket sheet not connected yet.',true);return}
  if(loading)return;loading=true;const btn=document.getElementById('refresh');btn.disabled=true;
  try{const [tt,mt]=await Promise.all([fetchTab(TICKETS_TAB),fetchTab(MEMBERS_TAB).catch(()=>null)]);
-  let B={};try{B=mt?parseMembers(mt):{}}catch(e){CATS={}}BLOCKS=B;
-  const {out,bad,dup}=parseTickets(tt,B);T=applyPending(out);const ts=Date.now();ls('pyssDraw',JSON.stringify({T,ts,CATS}));render();
+  let B={};try{B=mt?parseMembers(mt):{}}catch(e){}BLOCKS=B;
+  const {out,bad,dup}=parseTickets(tt,B);T=applyPending(out);const ts=Date.now();ls('pyssDraw',JSON.stringify({T,ts}));render();
   const w=[];if(bad.length)w.push(`check sheet row${bad.length>1?'s':''} ${bad.slice(0,5).join(', ')}${bad.length>5?'…':''} (ticket number or name missing)`);
   if(dup.length)w.push(`ticket${dup.length>1?'s':''} ${[...new Set(dup)].join(', ')} entered twice (first row used)`);
   status('Updated '+ago(ts)+(w.length?' · '+w.join(' · '):''),w.length>0)}
@@ -341,9 +340,28 @@ function canSell(){return sellOn&&!!PIN}
 function canCancel(t){if(!WHO)return true;                    // unknown yet: the script decides
  return WHO.role==='owner'||(!!t.by&&t.by===WHO.name)}
 function setWho(w){WHO=w;ls('pyssDrawWho',w?JSON.stringify(w):'');drawWho()}
-function signOut(){PIN='';ls('pyssDrawPin','');setWho(null);render()}
+function signOut(){PIN='';ls('pyssDrawPin','');ADMIN=null;CATS={};REM=null;setWho(null);render();if(typeof drawRem==='function')drawRem()}
+// Admin-only data (categories, WhatsApp numbers) - kept in memory only, never saved on the phone
+let ADMIN=null,signingIn=false;
+async function loadAdmin(){if(!sellOn||!PIN)return;
+ try{const r=await callScript({action:'contacts',pin:PIN});
+  if(r.ok){ADMIN=r.contacts||{};CATS={};Object.entries(ADMIN).forEach(([sn,c])=>{if(c.cats&&c.cats.length)CATS[sn]=c.cats})}
+  else if(r.error==='bad_pin'){signOut();return}
+  else ADMIN={};                                            // no private sheet yet: nothing extra to show
+  render();if(REM){REM.contacts=ADMIN;drawRem()}}catch(e){}}
 function drawWho(){const el=document.getElementById('whoBar');if(!el)return;
- if(!sellOn||!PIN){el.hidden=true;return}
+ const rb=document.getElementById('remBtn');try{if(rb)rb.hidden=!(sellOn&&PIN&&REMINDERS_ON)}catch(e){}
+ if(!sellOn){el.hidden=true;return}
+ if(!PIN){el.hidden=false;
+  el.innerHTML=signingIn?`<form id="siF" class="siform"><input id="siPin" type="password" inputmode="numeric" autocomplete="off" placeholder="Admin PIN" aria-label="Admin PIN" required><button class="ibtn solid" type="submit">Sign in</button><button class="linkbtn" type="button" id="siX">Cancel</button></form>`:`<button type="button" class="linkbtn" id="siOpen">Admin sign in</button>`;
+  if(signingIn){const f=document.getElementById('siF');document.getElementById('siPin').focus();
+   document.getElementById('siX').onclick=()=>{signingIn=false;drawWho()};
+   f.onsubmit=async e=>{e.preventDefault();const pin=document.getElementById('siPin').value.trim();if(!pin)return;
+    const r=await callScript({action:'check',pin}).catch(()=>null);
+    if(r&&r.ok){PIN=pin;ls('pyssDrawPin',pin);signingIn=false;setWho({role:r.role||'owner',name:r.name||''});loadAdmin();render()}
+    else toast(r&&r.error==='bad_pin'?'That PIN is wrong':r&&r.error==='locked'?'Too many wrong PINs. Try again in 10 minutes':"Couldn't reach the sheet script")}}
+  else document.getElementById('siOpen').onclick=()=>{signingIn=true;drawWho()};
+  return}
  el.hidden=false;el.innerHTML=`Signed in${WHO&&WHO.name?' as <b>'+esc(WHO.name)+'</b>':''}${WHO?` <span class="role ${WHO.role}">${WHO.role==='owner'?'Owner':'Admin'}</span>`:''} <button type="button" class="linkbtn" id="signOut">Sign out</button>`;
  document.getElementById('signOut').onclick=signOut}
 async function checkWho(pin){try{const r=await callScript({action:'check',pin:pin||PIN});
@@ -395,7 +413,7 @@ saleEl.addEventListener('submit',async e=>{e.preventDefault();if(sale.busy)retur
  const body={action:'sell',pin,ticket:no,sn:sn||'',memberName:sn?MEM[sn][0]:'',memberBlock:sn?memberBlock(sn):'',memberCountry:sn?MEM[sn][2]:'',name:sn?'':sale.buyer.trim(),block:sn?'':sale.block.trim(),country:sn?'':sale.country.trim(),type:sale.type,date:sale.date};
  try{const res=await callScript(body);
   if(!res.ok){sale.busy=false;sale.err=res.error==='script_error'?'The sheet script reported a problem: '+(res.message||'unknown')+'. Open the script link in a browser to check its setup.':ERR[res.error]||'The sheet refused the sale ('+res.error+').';if(res.error==='bad_pin'){signOut()}drawSale();return}
-  PIN=pin;ls('pyssDrawPin',pin);if(!WHO)checkWho(pin);else drawWho();
+  PIN=pin;ls('pyssDrawPin',pin);if(!WHO)checkWho(pin);else drawWho();if(!ADMIN)loadAdmin();
   const m=sn?MEM[sn]:null;T[no]={no,name:m?m[0]:body.name,sn:sn||null,block:m?m[1]:body.block,country:m?m[2]:body.country,free:sale.type==='Free',date:sale.date,by:res.by||(WHO&&WHO.name)||''};
   PENDING[no]={op:'sell',t:T[no],ts:Date.now()};sel=no;sale=null;drawSale();render();toast('Ticket '+no+' saved');setTimeout(load,4000)}
  catch(err){sale.busy=false;sale.err=navigator.onLine===false?"You're offline. Connect to the internet and try again.":"Couldn't reach the sheet script. Open the script link in a browser: if it doesn't show the PYSS check, the deployment's access must be set to Anyone.";drawSale()}});
@@ -411,30 +429,30 @@ document.getElementById('detail').addEventListener('click',async e=>{const b=e.t
 
 
 // ---- WhatsApp reminders (treasurer only): opens each member's chat with the message typed ----
-const REMINDERS_ON=false;   // switched off for now; set to true to bring back Send reminders
-const remBtn=document.getElementById('remBtn'),remSec=document.getElementById('remSec');remBtn.hidden=!(sellOn&&REMINDERS_ON);
+const REMINDERS_ON=true;    // shown only to signed-in owner/admins
+const remBtn=document.getElementById('remBtn'),remSec=document.getElementById('remSec');remBtn.hidden=!(sellOn&&REMINDERS_ON&&PIN);
 const DEF_MSG="നമസ്കാരം {name} 🙏\n\nPYSS പുതുവത്സര മെമ്പർഷിപ്പ് കാമ്പയിന്റെ ഭാഗമായി *ബമ്പർ ഡ്രോ* നടത്തുന്നു.\n\n🎟️ ടിക്കറ്റ് ഒന്നിന് ₹500 മാത്രം\n🏆 ആകെ ₹45,000 സമ്മാനങ്ങൾ\n   ഒന്നാം സമ്മാനം ₹10,000\n   രണ്ടാം സമ്മാനം ₹5,000 (4 പേർക്ക്)\n   മൂന്നാം സമ്മാനം ₹3,000 (5 പേർക്ക്)\n\nഇനി {left} ടിക്കറ്റുകൾ മാത്രം ബാക്കി. ഒഴിവുള്ള നമ്പറുകൾ ഇവിടെ കാണാം:\n{link}\n\nഇഷ്ടമുള്ള ടിക്കറ്റ് നമ്പർ മറുപടിയായി അയക്കുക. നന്ദി! 🙏\n– PYSS കമ്മിറ്റി";
 let REM=null;   // {contacts:{sn:{phone,reminded}}, all:false, err:'', busy:false}
 const remMsg=()=>ls('pyssRemMsg')||DEF_MSG;
 const titleName=s=>String(s).toLowerCase().replace(/(^|[\s(.])([a-z])/g,(m,a,b)=>a+b.toUpperCase());
 const REM_ERR={no_contacts:'The script has no CONTACTS_SHEET_ID yet. Add it in Apps Script → Project Settings → Script Properties.',contacts_columns:'The contacts sheet needs an S/N column and a WhatsApp column in row 1.',bad_pin:'That PIN is wrong.',locked:'Too many wrong PINs. Try again in 10 minutes.'};
-remBtn.onclick=()=>{if(!REMINDERS_ON)return;if(!REM)REM={contacts:null,filter:'todo',err:'',busy:false};remSec.hidden=false;drawRem();if(PIN&&!REM.contacts)loadContacts();remSec.scrollIntoView({behavior:'smooth',block:'start'})};
+remBtn.onclick=()=>{if(!REMINDERS_ON)return;if(!REM)REM={contacts:null,filter:'todo',err:'',busy:false};remSec.hidden=false;drawRem();if(PIN&&!REM.contacts){if(ADMIN&&Object.keys(ADMIN).length)REM.contacts=ADMIN,drawRem();else loadContacts()}remSec.scrollIntoView({behavior:'smooth',block:'start'})};
 async function loadContacts(pin){REM.busy=true;REM.err='';drawRem();
  try{const res=await callScript({action:'contacts',pin:pin||PIN});REM.busy=false;
   if(!res.ok){if(res.error==='bad_pin'){signOut()}REM.err=res.error==='script_error'?'Sheet script problem: '+(res.message||''):REM_ERR[res.error]||('Could not load numbers ('+res.error+').');drawRem();return}
-  if(pin){PIN=pin;ls('pyssDrawPin',pin);if(!WHO)checkWho(pin);else drawWho()}REM.contacts=res.contacts||{};drawRem()}
+  if(pin){PIN=pin;ls('pyssDrawPin',pin);if(!WHO)checkWho(pin);else drawWho()}ADMIN=REM.contacts=res.contacts||{};CATS={};Object.entries(ADMIN).forEach(([sn,c])=>{if(c.cats&&c.cats.length)CATS[sn]=c.cats});render();drawRem()}
  catch(e){REM.busy=false;REM.err="Couldn't reach the sheet script. Check your connection and try again.";drawRem()}}
 function waLink(sn,c){const left=TOTAL-Object.keys(T).length;
  const txt=remMsg().replace(/\{name\}/g,titleName(MEM[sn][0])).replace(/\{left\}/g,left).replace(/\{link\}/g,location.origin+location.pathname);
  return 'https://wa.me/'+c.phone+'?text='+encodeURIComponent(txt)}
 function remRows(){const C=REM.contacts,has=new Set(Object.values(T).filter(t=>t.sn).map(t=>+t.sn));
- const sns=Object.keys(C).map(Number).filter(sn=>MEM[sn]).sort((a,b)=>MEM[a][0].localeCompare(MEM[b][0]));
+ const sns=Object.keys(C).map(Number).filter(sn=>MEM[sn]&&C[sn].phone).sort((a,b)=>MEM[a][0].localeCompare(MEM[b][0]));
  const todo=sns.filter(sn=>!has.has(sn)),missing=Object.keys(MEM).length-sns.length;
  const cats=[...new Set(sns.flatMap(sn=>CATS[sn]||[]))].sort();
  const f=REM.filter||'todo',list=f==='all'?sns:f.startsWith('cat:')?sns.filter(sn=>(CATS[sn]||[]).includes(f.slice(4))):todo;
  const sent=list.filter(sn=>C[sn].reminded).length;
  return {list,todo,sns,missing,sent,has,cats}}
-function drawRem(){if(!REM){remSec.hidden=true;return}
+function drawRem(){if(!REM){remSec.hidden=true;remSec.innerHTML='';return}
  let h=`<div class="rem"><h2>WhatsApp reminders <small><button type="button" class="ibtn" data-rclose>Close</button></small></h2>`;
  if(!REM.contacts){
   h+=`<p class="hint">Each member's chat opens in your WhatsApp with the message ready; you tap Send. Numbers come from your private contacts sheet and are only shown after the PIN.</p>`;
@@ -461,8 +479,8 @@ remSec.addEventListener('click',e=>{const b=e.target.closest('[data-rclose],[dat
  if(b.dataset.rsn){const sn=+b.dataset.rsn,d=today();REM.contacts[sn].reminded=d;   // the link itself opens WhatsApp
   setTimeout(drawRem,300);callScript({action:'mark',pin:PIN,sn,date:d}).catch(()=>{})}});
 
-(()=>{const c=cached();if(c&&c.T){T=c.T;CATS=c.CATS||{}}})();
-drawWho();if(sellOn&&PIN&&!WHO)checkWho();
+(()=>{const c=cached();if(c&&c.T)T=c.T})();
+drawWho();if(sellOn&&PIN){if(!WHO)checkWho();loadAdmin()}
 render();load();
 </script>
 </body>

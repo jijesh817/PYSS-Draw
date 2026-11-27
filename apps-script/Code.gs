@@ -99,7 +99,8 @@ function columnFields(head) {
 const CONTACT_HEADINGS = {
   sn: ['sn', 'sno', 'serial', 'serialno', 'membersn'],
   phone: ['whatsapp', 'whatsappnumber', 'whatsappno', 'phone', 'phonenumber', 'phoneno', 'mobile', 'mobileno', 'mobilenumber', 'number'],
-  reminded: ['reminded', 'remindedon', 'lastreminded']
+  reminded: ['reminded', 'remindedon', 'lastreminded'],
+  role: ['role', 'roles', 'category', 'categories', 'group', 'groups', 'tag', 'tags', 'position']
 };
 
 function contactsSheet() {
@@ -122,19 +123,22 @@ function ymd(v) {
   return String(v || '').trim();
 }
 
-// S/N -> { phone (digits only, with country code), reminded (date or '') }
+// Admin-only member details from the private sheet:
+// S/N -> { phone (digits, with country code, or ''), reminded (date or ''), cats (['Admin', ...]) }
 function readContacts() {
   const sh = contactsSheet();
   if (!sh) return { error: 'no_contacts' };
   const c = contactCols(sh);
-  if (c.sn < 0 || c.phone < 0) return { error: 'contacts_columns' };
+  if (c.sn < 0 || (c.phone < 0 && c.role < 0)) return { error: 'contacts_columns' };
   const rows = sh.getDataRange().getValues();
   const list = {};
   for (let r = 1; r < rows.length; r++) {
     const sn = Math.round(Number(rows[r][c.sn]));
-    let phone = String(rows[r][c.phone] || '').replace(/[^0-9]/g, '').replace(/^00/, '');
-    if (!(sn > 0) || !phone) continue;
-    list[sn] = { phone: phone, reminded: c.reminded >= 0 ? ymd(rows[r][c.reminded]) : '' };
+    if (!(sn > 0)) continue;
+    const phone = c.phone >= 0 ? String(rows[r][c.phone] || '').replace(/[^0-9]/g, '').replace(/^00/, '') : '';
+    const cats = c.role >= 0 ? String(rows[r][c.role] || '').split(/[,;\n]/).map(x => clean(x).slice(0, 30)).filter(Boolean).slice(0, 4) : [];
+    if (!phone && !cats.length) continue;
+    list[sn] = { phone: phone, reminded: c.reminded >= 0 ? ymd(rows[r][c.reminded]) : '', cats: cats };
   }
   return { list: list };
 }
@@ -183,7 +187,7 @@ function doGet() {
   }
   try {
     const ct = readContacts();
-    r.contacts = ct.error ? ct.error : Object.keys(ct.list).length + ' numbers';
+    r.contacts = ct.error ? ct.error : Object.keys(ct.list).length + ' members (' + Object.keys(ct.list).filter(k => ct.list[k].phone).length + ' with WhatsApp, ' + Object.keys(ct.list).filter(k => ct.list[k].cats.length).length + ' with categories)';
   } catch (err) {
     r.contacts = 'error: ' + String(err && err.message || err);
   }
