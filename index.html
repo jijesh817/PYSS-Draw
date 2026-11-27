@@ -209,6 +209,8 @@ const inr=n=>'₹'+n.toLocaleString('en-IN');
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 function ls(k,v){try{if(v===undefined)return localStorage.getItem(k);localStorage.setItem(k,v)}catch(e){return null}}
 let T={};
+let BLOCKS={};   // blocks changed in the Members tab (S/N -> block)
+function memberBlock(sn){return BLOCKS[sn]||MEM[sn][1]}
 // Sales/cancels made on this phone, kept on screen until Google's copy of the sheet catches up
 const PENDING={},PENDING_MS=180000;
 function applyPending(t){const now=Date.now();
@@ -243,7 +245,7 @@ function parseTickets(text,B){const j=gviz(text),cs=cols(j);
   if(!(no>=1&&no<=TOTAL)||!name){bad.push(row);return}
   if(out[no]){dup.push(no);return}
   out[no]={no,name:name.slice(0,60),sn:m?sn:null,
-   block:((iB>=0&&cText(c[iB]))||(m?(B[sn]||m[1]):'')).slice(0,40),
+   block:((m&&B[sn])||(iB>=0&&cText(c[iB]))||(m?m[1]:'')).slice(0,40),
    country:((iC>=0&&cText(c[iC]))||(m?m[2]:'')).slice(0,40),
    free:iY>=0&&/free|comp|സൗജന്യ/i.test(cText(c[iY])),date:iD>=0?cDate(c[iD]):'',by:iW>=0?cText(c[iW]).slice(0,40):''}});
  return {out,bad,dup}}
@@ -299,7 +301,7 @@ async function load(){
  if(!SHEET_ID||SHEET_ID.startsWith('__')){status('Ticket sheet not connected yet.',true);return}
  if(loading)return;loading=true;const btn=document.getElementById('refresh');btn.disabled=true;
  try{const [tt,mt]=await Promise.all([fetchTab(TICKETS_TAB),fetchTab(MEMBERS_TAB).catch(()=>null)]);
-  let B={};try{B=mt?parseMembers(mt):{}}catch(e){}
+  let B={};try{B=mt?parseMembers(mt):{}}catch(e){}BLOCKS=B;
   const {out,bad,dup}=parseTickets(tt,B);T=applyPending(out);const ts=Date.now();ls('pyssDraw',JSON.stringify({T,ts}));render();
   const w=[];if(bad.length)w.push(`check sheet row${bad.length>1?'s':''} ${bad.slice(0,5).join(', ')}${bad.length>5?'…':''} (ticket number or name missing)`);
   if(dup.length)w.push(`ticket${dup.length>1?'s':''} ${[...new Set(dup)].join(', ')} entered twice (first row used)`);
@@ -379,7 +381,7 @@ saleEl.addEventListener('submit',async e=>{e.preventDefault();if(sale.busy)retur
  if(T[no]){sale.err=ERR.taken;drawSale();return}
  if(!sn&&!sale.buyer.trim()){sale.err=ERR.no_name;drawSale();return}
  sale.busy=true;sale.err='';drawSale();
- const body={action:'sell',pin,ticket:no,sn:sn||'',memberName:sn?MEM[sn][0]:'',name:sn?'':sale.buyer.trim(),block:sn?'':sale.block.trim(),country:sn?'':sale.country.trim(),type:sale.type,date:sale.date};
+ const body={action:'sell',pin,ticket:no,sn:sn||'',memberName:sn?MEM[sn][0]:'',memberBlock:sn?memberBlock(sn):'',memberCountry:sn?MEM[sn][2]:'',name:sn?'':sale.buyer.trim(),block:sn?'':sale.block.trim(),country:sn?'':sale.country.trim(),type:sale.type,date:sale.date};
  try{const res=await callScript(body);
   if(!res.ok){sale.busy=false;sale.err=res.error==='script_error'?'The sheet script reported a problem: '+(res.message||'unknown')+'. Open the script link in a browser to check its setup.':ERR[res.error]||'The sheet refused the sale ('+res.error+').';if(res.error==='bad_pin'){signOut()}drawSale();return}
   PIN=pin;ls('pyssDrawPin',pin);if(!WHO)checkWho(pin);else drawWho();

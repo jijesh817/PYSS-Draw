@@ -269,10 +269,10 @@ function handle(e) {
     const fields = {
       ticketno: no,
       sn: sn > 0 ? sn : '',
-      // A member is stored by S/N; their name is written only if the tab has no S/N column.
-      name: sn > 0 ? (cols.indexOf('sn') >= 0 ? '' : clean(d.memberName)) : name,
-      block: sn > 0 ? '' : block,
-      country: sn > 0 ? '' : country,
+      // Members: S/N plus their name, block and country, so the sheet is readable on its own.
+      name: sn > 0 ? (clean(d.memberName) || name) : name,
+      block: sn > 0 ? (clean(d.memberBlock) || block) : block,
+      country: sn > 0 ? (clean(d.memberCountry) || country) : country,
       type: d.type === 'Free' ? 'Free' : 'Paid',
       date: date,
       by: who.name
