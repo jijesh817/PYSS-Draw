@@ -97,6 +97,22 @@ The older single `PIN` property keeps working as the owner PIN until
 `OWNER_PIN` is set; delete it afterwards. The app shows "Signed in as …
 Owner/Admin" with a **Sign out** link.
 
+## Admin-only: categories and WhatsApp
+
+Member categories (e.g. `Admin`, `Former admin 2024–2026`) and WhatsApp
+numbers are **admin-only**. They live in a **private** "PYSS Contacts"
+sheet (sharing *Restricted*), never in the public PYSS sheet. The script
+sends them only after an owner/admin PIN, and the app keeps them in memory
+only.
+
+- Columns: **S/N · Name · Block · Country · Role · WhatsApp** (import
+  `sheet-template/Contacts.csv`). Role can hold several categories,
+  separated by commas. Leave WhatsApp blank if not needed.
+- Script Properties: `CONTACTS_SHEET_ID` = that sheet's ID.
+- In the app, tap **Admin sign in** (or sell a ticket) to see category tags
+  and **Send reminders**, which can filter by category. **Sign out** hides
+  them again. Members never see either.
+
 ## WhatsApp reminders (treasurer)
 
 **Send reminders** lists members who haven't taken a ticket yet, with a
