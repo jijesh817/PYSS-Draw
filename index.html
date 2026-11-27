@@ -128,6 +128,7 @@ input[type=search]{width:100%;padding:10px 12px;border-radius:10px;border:1px so
 .role{font-size:11px;font-weight:800;border-radius:999px;padding:2px 8px;background:var(--golds);color:#8a6a14}
 .role.owner{background:var(--ink);color:#fff}
 .linkbtn{border:0;background:none;color:var(--ink);font:700 13px var(--sans);text-decoration:underline;cursor:pointer;padding:0}
+.cat{display:inline-block;font:700 11px var(--sans)!important;color:#fff!important;background:var(--cc,#7c3aed);border-radius:6px;padding:1px 6px;margin-left:5px;vertical-align:2px;white-space:nowrap}
 .toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:#fff;padding:8px 14px;border-radius:999px;font-size:13px;opacity:0;transition:opacity .2s;pointer-events:none}
 .toast.on{opacity:1}
 button:focus-visible,input:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
@@ -210,6 +211,10 @@ const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'
 function ls(k,v){try{if(v===undefined)return localStorage.getItem(k);localStorage.setItem(k,v)}catch(e){return null}}
 let T={};
 let BLOCKS={};   // blocks changed in the Members tab (S/N -> block)
+let CATS={};     // member categories from the Members tab (S/N -> ['Admin', ...])
+const CAT_COL=['#7c3aed','#0f766e','#b45309','#be185d','#1d4ed8','#4d7c0f','#9f1239','#0369a1'];
+function catColor(c){let h=0;for(const ch of c)h=(h*31+ch.charCodeAt(0))>>>0;return CAT_COL[h%CAT_COL.length]}
+function catTags(sn){return (sn&&CATS[sn]||[]).map(c=>`<span class="cat" style="--cc:${catColor(c)}">${esc(c)}</span>`).join('')}
 function memberBlock(sn){return BLOCKS[sn]||MEM[sn][1]}
 // Sales/cancels made on this phone, kept on screen until Google's copy of the sheet catches up
 const PENDING={},PENDING_MS=180000;
@@ -231,8 +236,14 @@ function cDate(c){if(!c||c.v==null)return '';const v=c.v;if(typeof v==='string')
  m=/^(\d{4})-(\d{1,2})-(\d{1,2})/.exec(v);if(m)return m[1]+'-'+p2(+m[2])+'-'+p2(+m[3]);
  m=/^(\d{1,2})[\/.\-](\d{1,2})[\/.\-](\d{4})$/.exec(v.trim());if(m)return m[3]+'-'+p2(+m[2])+'-'+p2(+m[1]);return v.trim()}return c.f||String(v)}
 function find(cs,names){return cs.findIndex(c=>c&&names.includes(c))}
-function parseMembers(text){const j=gviz(text),cs=cols(j),iS=find(cs,['sn','sno','serial','serialno']),iB=find(cs,['block']);if(iS<0||iB<0)return {};
- const B={};j.table.rows.forEach(r=>{const c=r.c||[],sn=Math.round(cNum(c[iS])),b=cText(c[iB]);if(MEM[sn]&&b)B[sn]=b.slice(0,40)});return B}
+// Members tab: S/N plus optional Block and Role/Category ("Admin, Former admin 2024–2026")
+function parseMembers(text){const j=gviz(text),cs=cols(j),iS=find(cs,['sn','sno','serial','serialno']),iB=find(cs,['block']),
+  iR=find(cs,['role','roles','category','categories','group','groups','tag','tags','position']);
+ CATS={};if(iS<0||(iB<0&&iR<0))return {};
+ const B={};j.table.rows.forEach(r=>{const c=r.c||[],sn=Math.round(cNum(c[iS]));if(!MEM[sn])return;
+  const b=iB>=0?cText(c[iB]):'';if(b)B[sn]=b.slice(0,40);
+  const rs=iR>=0?cText(c[iR]).split(/[,;\n]/).map(x=>x.trim().slice(0,30)).filter(Boolean).slice(0,4):[];if(rs.length)CATS[sn]=rs});
+ return B}
 function parseTickets(text,B){const j=gviz(text),cs=cols(j);
  const iT=find(cs,['ticketno','ticket','ticketnumber','no','tno']),iS=find(cs,['sn','sno','serial','serialno','membersn']),iN=find(cs,['name','buyer','buyername','holder']),
   iB=find(cs,['block']),iC=find(cs,['country']),iY=find(cs,['type','freepaid','paidfree','free','payment']),iD=find(cs,['date','saledate','datesold','solddate']),iW=find(cs,['by','soldby','addedby','recordedby','enteredby']);
@@ -263,7 +274,7 @@ function render(){const {sold,free,paid}=stats();
  let g='';for(let no=1;no<=TOTAL;no++){const t=T[no];g+=`<button class="tk ${no>99?'k3':''} ${t?(t.free?'fr':'s'):''} ${matches(t,no)?'':'dim'} ${sel===no?'sel':''}" data-no="${no}" aria-label="Ticket ${no}${t?', '+esc(t.name):', available'}">${no}</button>`}
  document.getElementById('grid').innerHTML=g;
  document.querySelectorAll('#lmode button').forEach(b=>b.classList.toggle('on',b.dataset.m===listMode));
- const soldRow=t=>`<div class="li ${t.free?'fr':''}" data-no="${t.no}"><div class="n">${t.no}</div><div class="w"><b>${esc(t.name)}</b><span>${esc([t.block,t.country].filter(Boolean).join(' · '))}${t.date?(t.block||t.country?' · ':'')+esc(fd(t.date)):''}</span></div><span class="tag ${t.free?'fr':''}">${t.free?'Free':'₹500'}</span></div>`;
+ const soldRow=t=>`<div class="li ${t.free?'fr':''}" data-no="${t.no}"><div class="n">${t.no}</div><div class="w"><b>${esc(t.name)}${catTags(t.sn)}</b><span>${esc([t.block,t.country].filter(Boolean).join(' · '))}${t.date?(t.block||t.country?' · ':'')+esc(fd(t.date)):''}</span></div><span class="tag ${t.free?'fr':''}">${t.free?'Free':'₹500'}</span></div>`;
  let html,count;
  if(listMode==='all'){const nos=[];for(let no=1;no<=TOTAL;no++)if(matches(T[no],no))nos.push(no);count=nos.length;
   html=nos.length?nos.map(no=>T[no]?soldRow(T[no]):`<div class="li av" data-no="${no}" aria-label="Ticket ${no}, not sold"><div class="n">${no}</div><div class="w"></div><span></span></div>`).join(''):'<div class="empty">No tickets match.</div>';
@@ -274,7 +285,7 @@ function render(){const {sold,free,paid}=stats();
  document.getElementById('list').innerHTML=html;
  const d=document.getElementById('detail');
  if(sel){const t=T[sel];d.hidden=false;d.className='detail '+(t?(t.free?'fr':''):'av');
-  d.innerHTML=t?`<div class="no">Ticket ${sel} · ${t.free?'Free (membership offer)':'Paid ₹500'}</div><div class="nm">${esc(t.name)}</div><div class="meta">${esc([t.block&&'Block '+t.block,t.country].filter(Boolean).join(' · '))}${t.date?'<br>Sold '+esc(fd(t.date)):''}${t.by?(t.date?' by ':'<br>Sold by ')+esc(t.by):''}</div>`
+  d.innerHTML=t?`<div class="no">Ticket ${sel} · ${t.free?'Free (membership offer)':'Paid ₹500'}</div><div class="nm">${esc(t.name)}${catTags(t.sn)}</div><div class="meta">${esc([t.block&&'Block '+t.block,t.country].filter(Boolean).join(' · '))}${t.date?'<br>Sold '+esc(fd(t.date)):''}${t.by?(t.date?' by ':'<br>Sold by ')+esc(t.by):''}</div>`
    :`<div class="no">Ticket ${sel}</div><div class="nm">Available</div><div class="meta">This ticket hasn't been sold yet.</div>`;
   if(canSell()){const a=document.createElement('div');a.className='dact';
    a.innerHTML=t?(!canCancel(t)?`<span class="meta">Only ${t.by?esc(t.by)+' (who sold it) or ':''}the owner can cancel this sale.</span>`:cancelAsk===sel?`<button class="ibtn danger" data-cancel="${sel}">Yes, cancel ticket ${sel}</button><button class="ibtn" data-cancelno>Keep it</button>`:`<button class="ibtn danger" data-askcancel="${sel}">Cancel this sale</button>`):`<button class="ibtn solid" data-sell="${sel}">Sell ticket ${sel}</button>`;
@@ -301,8 +312,8 @@ async function load(){
  if(!SHEET_ID||SHEET_ID.startsWith('__')){status('Ticket sheet not connected yet.',true);return}
  if(loading)return;loading=true;const btn=document.getElementById('refresh');btn.disabled=true;
  try{const [tt,mt]=await Promise.all([fetchTab(TICKETS_TAB),fetchTab(MEMBERS_TAB).catch(()=>null)]);
-  let B={};try{B=mt?parseMembers(mt):{}}catch(e){}BLOCKS=B;
-  const {out,bad,dup}=parseTickets(tt,B);T=applyPending(out);const ts=Date.now();ls('pyssDraw',JSON.stringify({T,ts}));render();
+  let B={};try{B=mt?parseMembers(mt):{}}catch(e){CATS={}}BLOCKS=B;
+  const {out,bad,dup}=parseTickets(tt,B);T=applyPending(out);const ts=Date.now();ls('pyssDraw',JSON.stringify({T,ts,CATS}));render();
   const w=[];if(bad.length)w.push(`check sheet row${bad.length>1?'s':''} ${bad.slice(0,5).join(', ')}${bad.length>5?'…':''} (ticket number or name missing)`);
   if(dup.length)w.push(`ticket${dup.length>1?'s':''} ${[...new Set(dup)].join(', ')} entered twice (first row used)`);
   status('Updated '+ago(ts)+(w.length?' · '+w.join(' · '):''),w.length>0)}
@@ -407,7 +418,7 @@ let REM=null;   // {contacts:{sn:{phone,reminded}}, all:false, err:'', busy:fals
 const remMsg=()=>ls('pyssRemMsg')||DEF_MSG;
 const titleName=s=>String(s).toLowerCase().replace(/(^|[\s(.])([a-z])/g,(m,a,b)=>a+b.toUpperCase());
 const REM_ERR={no_contacts:'The script has no CONTACTS_SHEET_ID yet. Add it in Apps Script → Project Settings → Script Properties.',contacts_columns:'The contacts sheet needs an S/N column and a WhatsApp column in row 1.',bad_pin:'That PIN is wrong.',locked:'Too many wrong PINs. Try again in 10 minutes.'};
-remBtn.onclick=()=>{if(!REMINDERS_ON)return;if(!REM)REM={contacts:null,all:false,err:'',busy:false};remSec.hidden=false;drawRem();if(PIN&&!REM.contacts)loadContacts();remSec.scrollIntoView({behavior:'smooth',block:'start'})};
+remBtn.onclick=()=>{if(!REMINDERS_ON)return;if(!REM)REM={contacts:null,filter:'todo',err:'',busy:false};remSec.hidden=false;drawRem();if(PIN&&!REM.contacts)loadContacts();remSec.scrollIntoView({behavior:'smooth',block:'start'})};
 async function loadContacts(pin){REM.busy=true;REM.err='';drawRem();
  try{const res=await callScript({action:'contacts',pin:pin||PIN});REM.busy=false;
   if(!res.ok){if(res.error==='bad_pin'){signOut()}REM.err=res.error==='script_error'?'Sheet script problem: '+(res.message||''):REM_ERR[res.error]||('Could not load numbers ('+res.error+').');drawRem();return}
@@ -418,9 +429,11 @@ function waLink(sn,c){const left=TOTAL-Object.keys(T).length;
  return 'https://wa.me/'+c.phone+'?text='+encodeURIComponent(txt)}
 function remRows(){const C=REM.contacts,has=new Set(Object.values(T).filter(t=>t.sn).map(t=>+t.sn));
  const sns=Object.keys(C).map(Number).filter(sn=>MEM[sn]).sort((a,b)=>MEM[a][0].localeCompare(MEM[b][0]));
- const todo=sns.filter(sn=>!has.has(sn)),list=REM.all?sns:todo,missing=Object.keys(MEM).length-sns.length;
+ const todo=sns.filter(sn=>!has.has(sn)),missing=Object.keys(MEM).length-sns.length;
+ const cats=[...new Set(sns.flatMap(sn=>CATS[sn]||[]))].sort();
+ const f=REM.filter||'todo',list=f==='all'?sns:f.startsWith('cat:')?sns.filter(sn=>(CATS[sn]||[]).includes(f.slice(4))):todo;
  const sent=list.filter(sn=>C[sn].reminded).length;
- return {list,todo,sns,missing,sent,has}}
+ return {list,todo,sns,missing,sent,has,cats}}
 function drawRem(){if(!REM){remSec.hidden=true;return}
  let h=`<div class="rem"><h2>WhatsApp reminders <small><button type="button" class="ibtn" data-rclose>Close</button></small></h2>`;
  if(!REM.contacts){
@@ -430,25 +443,25 @@ function drawRem(){if(!REM){remSec.hidden=true;return}
   else h+=`<button class="ibtn solid" type="button" data-rload>Load members</button>`;
   if(REM.err)h+=`<div class="err">${esc(REM.err)}</div>`;
   remSec.innerHTML=h+'</div>';return}
- const {list,todo,sns,missing,sent,has}=remRows();
+ const {list,todo,sns,missing,sent,has,cats}=remRows(),f=REM.filter||'todo';
  h+=`<label class="hint" for="remMsg">Message ( {name}, {left} and {link} are filled in for each member )</label><textarea id="remMsg">${esc(remMsg())}</textarea>
   <div class="hint"><button type="button" class="ibtn" data-rreset>Reset message</button></div>
-  <div class="filters"><button class="chip ${REM.all?'':'on'}" data-rall="0">Not bought yet (${todo.length})</button><button class="chip ${REM.all?'on':''}" data-rall="1">Everyone (${sns.length})</button></div>
+  <div class="filters"><button class="chip ${f==='todo'?'on':''}" data-rf="todo">Not bought yet (${todo.length})</button><button class="chip ${f==='all'?'on':''}" data-rf="all">Everyone (${sns.length})</button>${cats.map(c=>`<button class="chip ${f==='cat:'+c?'on':''}" data-rf="cat:${esc(c)}">${esc(c)} (${sns.filter(sn=>(CATS[sn]||[]).includes(c)).length})</button>`).join('')}</div>
   <div class="hint">${sent} of ${list.length} reminded${missing>0?` · ${missing} members have no number in the contacts sheet`:''}</div><div id="remList">`;
- h+=list.length?list.map(sn=>{const c=REM.contacts[sn],m=MEM[sn];return `<div class="rrow ${c.reminded?'done':''}"><div class="w"><b>${esc(m[0])}</b><span>${esc(m[1])} · ${esc(m[2])} · +${esc(c.phone)}${has.has(sn)?' · has a ticket':''}${c.reminded?` · <span class="ok">reminded ${esc(fd(c.reminded))}</span>`:''}</span></div><a class="wa" href="${esc(waLink(sn,c))}" target="_blank" rel="noopener" data-rsn="${sn}">${c.reminded?'Send again':'WhatsApp'}</a></div>`}).join(''):'<div class="empty">Everyone in the contacts sheet already has a ticket. 🎉</div>';
+ h+=list.length?list.map(sn=>{const c=REM.contacts[sn],m=MEM[sn];return `<div class="rrow ${c.reminded?'done':''}"><div class="w"><b>${esc(m[0])}${catTags(sn)}</b><span>${esc(m[1])} · ${esc(m[2])} · +${esc(c.phone)}${has.has(sn)?' · has a ticket':''}${c.reminded?` · <span class="ok">reminded ${esc(fd(c.reminded))}</span>`:''}</span></div><a class="wa" href="${esc(waLink(sn,c))}" target="_blank" rel="noopener" data-rsn="${sn}">${c.reminded?'Send again':'WhatsApp'}</a></div>`}).join(''):'<div class="empty">Everyone in the contacts sheet already has a ticket. 🎉</div>';
  remSec.innerHTML=h+'</div></div>'}
 remSec.addEventListener('submit',e=>{e.preventDefault();const p=document.getElementById('remPin').value.trim();if(p)loadContacts(p)});
 remSec.addEventListener('input',e=>{if(e.target.id!=='remMsg')return;ls('pyssRemMsg',e.target.value);
  document.querySelectorAll('#remList .wa').forEach(a=>{const sn=+a.dataset.rsn;a.href=waLink(sn,REM.contacts[sn])})});
-remSec.addEventListener('click',e=>{const b=e.target.closest('[data-rclose],[data-rload],[data-rreset],[data-rall],[data-rsn]');if(!b)return;
+remSec.addEventListener('click',e=>{const b=e.target.closest('[data-rclose],[data-rload],[data-rreset],[data-rf],[data-rsn]');if(!b)return;
  if('rclose' in b.dataset){REM=null;drawRem();return}
  if('rload' in b.dataset){loadContacts();return}
  if('rreset' in b.dataset){ls('pyssRemMsg','');drawRem();return}
- if(b.dataset.rall){REM.all=b.dataset.rall==='1';drawRem();return}
+ if(b.dataset.rf){REM.filter=b.dataset.rf;drawRem();return}
  if(b.dataset.rsn){const sn=+b.dataset.rsn,d=today();REM.contacts[sn].reminded=d;   // the link itself opens WhatsApp
   setTimeout(drawRem,300);callScript({action:'mark',pin:PIN,sn,date:d}).catch(()=>{})}});
 
-(()=>{const c=cached();if(c&&c.T)T=c.T})();
+(()=>{const c=cached();if(c&&c.T){T=c.T;CATS=c.CATS||{}}})();
 drawWho();if(sellOn&&PIN&&!WHO)checkWho();
 render();load();
 </script>
